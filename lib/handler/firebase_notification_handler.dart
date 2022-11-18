@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -30,7 +29,6 @@ class FirebaseNotifications {
     if (Platform.isIOS) iOS_Permission();
 
     _firebaseMessaging.getToken().then((token) async {
-      print("token :"+token);
       debugPrint("token......."+token);
       SharedPreferences prefs = await SharedPreferences.getInstance();
       prefs.setString("tokenid", token);

@@ -7,4 +7,5 @@ class Images
   static String delivered="assets/img/delivered.png";
   static String recieved="assets/img/recieved.png";
   static String out_delivery="assets/img/out_delivery.png";
+  static String up_down_arrow="assets/img/up_down_arrow.png";
 }

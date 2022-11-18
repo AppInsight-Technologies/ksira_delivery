@@ -154,10 +154,19 @@ class _OrdersHistoryWidgetState extends StateMVC<OrdersHistoryWidget> {
         lastDate: new DateTime(now.year, now.month + 10, now.day),
         builder: (context, child) {
           return Theme(
-            data: ThemeData.light().copyWith(
-              primaryColor:  Theme.of(context).accentColor,//Head background
-              accentColor: Theme.of(context).accentColor,//selection color
-            ),// This will change to light theme.
+            data: Theme.of(context).copyWith(
+              colorScheme: ColorScheme.light(
+                primary: Theme.of(context).accentColor, // <-- SEE HERE
+                onPrimary: Colors.white, // <-- SEE HERE
+                onSurface: Colors.blue, // <-- SEE HERE
+              ),
+              textButtonTheme: TextButtonThemeData(
+                style: TextButton.styleFrom(
+                    primary: Colors.white,
+                    backgroundColor: Theme.of(context).accentColor// button text color
+                ),
+              ),
+            ),
             child: child,
           );
         },
@@ -203,7 +212,8 @@ class _OrdersHistoryWidgetState extends StateMVC<OrdersHistoryWidget> {
           backgroundColor: /*Colors.transparent*/Theme.of(context).accentColor,
           elevation: 0,
           centerTitle: true,
-          title: SvgPicture.asset("assets/img/Logo.svg", width: 40, height: 45,/*color: Colors.white,*/),/*Text(
+          title: SvgPicture.asset("assets/img/Logo.svg", width: 40, height: 45,),
+          /*title: Image.asset("assets/img/Logo.png"),Text(
           S.of(context).orders,
           style: Theme.of(context).textTheme.title.merge(TextStyle(letterSpacing: 1.3)),
 
@@ -269,7 +279,7 @@ class _OrdersHistoryWidgetState extends StateMVC<OrdersHistoryWidget> {
                             ),
                           ),
                           SizedBox(height: 20.0,),
-                          Text("Hold on! No Orders Assigned Yet",style: TextStyle(color: Colors.grey),),
+                          Text("Hold on! No Orders Assigned Yet",style: TextStyle(fontWeight: FontWeight.bold,color: Colors.grey),),
                         ],
                       ),
                     ),

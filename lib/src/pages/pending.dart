@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../constants/images.dart';
 import '../../generated/i18n.dart';
+import '../../providers/group_provider.dart';
 import '../../providers/ordersitems.dart';
 import '../../src/models/route_argument.dart';
 import 'package:intl/intl.dart';
@@ -28,6 +29,8 @@ class _PendingOrderState extends State<PendingOrder> {
   String _date="";
   String mode="0";
   int moodCheck = 0;
+  String dropDownValue = '';
+
   @override
   void initState() {
     _date = widget.routeArgument.date;
@@ -121,10 +124,19 @@ class _PendingOrderState extends State<PendingOrder> {
         lastDate: new DateTime(now.year, now.month + 10, now.day),
         builder: (context, child) {
           return Theme(
-            data: ThemeData.light().copyWith(
-              primaryColor:  Theme.of(context).accentColor,//Head background
-              accentColor: Theme.of(context).accentColor,//selection color
-            ),// This will change to light theme.
+            data: Theme.of(context).copyWith(
+              colorScheme: ColorScheme.light(
+                primary: Theme.of(context).accentColor, // <-- SEE HERE
+                onPrimary: Colors.white, // <-- SEE HERE
+                onSurface: Colors.blue, // <-- SEE HERE
+              ),
+              textButtonTheme: TextButtonThemeData(
+                style: TextButton.styleFrom(
+                    primary: Colors.white,
+                    backgroundColor: Theme.of(context).accentColor// button text color
+                ),
+              ),
+            ),
             child: child,
           );
         },
@@ -157,6 +169,26 @@ class _PendingOrderState extends State<PendingOrder> {
         });
     }
 
+    List<String> items = [];
+    Provider.of<OrdersItemsList>(context).blockOrder.forEach((element) {
+      //TODO remove toLowerCase()
+      if(items.contains(element.groupName)){
+        items.add(element.groupName.toLowerCase());
+      }else{
+        items.add(element.groupName);
+      }
+
+    });
+
+    print('++++++++++++++items++++++++++++++++++');
+    print(items);
+    print(Provider.of<OrdersItemsList>(context).activeBlock);
+
+    if(Provider.of<OrdersItemsList>(context).activeBlock == 0){
+      dropDownValue = items.length > 0?  items.first : null;
+    }else{
+      dropDownValue = items.isEmpty ? '' : items[Provider.of<OrdersItemsList>(context).activeBlock];
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -169,7 +201,8 @@ class _PendingOrderState extends State<PendingOrder> {
         backgroundColor: /*Colors.transparent*/Theme.of(context).accentColor,
         elevation: 0,
         centerTitle: true,
-        title: SvgPicture.asset("assets/img/Logo.svg", width: 40, height: 45,/*color: Colors.white,*/),/*Text(
+       title: SvgPicture.asset("assets/img/Logo.svg", width: 40, height: 45,)
+        /*title: Image.asset("assets/img/Logo.png"),Text(
           S.of(context).orders,
           style: Theme.of(context).textTheme.title.merge(TextStyle(letterSpacing: 1.3)),
 
@@ -183,7 +216,7 @@ class _PendingOrderState extends State<PendingOrder> {
       backgroundColor: Colors.white,
       body: _isloading?CircularProgressIndicator(color: Colors.transparent,):Container(
         height: MediaQuery.of(context).size.height,
-       child: SingleChildScrollView(
+       child: items == null ?  Center(child: CircularProgressIndicator(color: Theme.of(context).accentColor)) : SingleChildScrollView(
         physics: AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.symmetric(vertical: 10),
            child: Column(
@@ -192,23 +225,91 @@ class _PendingOrderState extends State<PendingOrder> {
              mainAxisSize: MainAxisSize.max,
              children: <Widget>[
                GestureDetector(
-                 onTap: (){
-                   setState(() {
-                     _selectDate(context,setState);
-                   });
-                 },
+
                  child: Row(
                    children: [
                      SizedBox(width: 18,),
-                     Icon(Icons.keyboard_arrow_down,color: Theme.of(context).accentColor,size: 25,),
-                     SizedBox(width: 5,),
-                     Text(
-                       DateFormat("d MMMM").format(_selectedDate),
-                       style: TextStyle(
-                           fontSize: 18,
-                           fontWeight: FontWeight.bold,
-                           color: Theme.of(context).accentColor),
+                     GestureDetector(
+                       onTap: (){
+                         setState(() {
+                           _selectDate(context,setState);
+                         });
+                       },
+                       child: Row(children: [Icon(Icons.keyboard_arrow_down,color: Theme.of(context).accentColor,size: 25,),
+                         SizedBox(width: 5,),
+                         Text(
+                           DateFormat("d MMMM").format(_selectedDate),
+                           style: TextStyle(
+                               fontSize: 18,
+                               fontWeight: FontWeight.bold,
+                               color: Theme.of(context).accentColor),
+                         ),],),
                      ),
+                     Spacer(),
+                     DropdownButton<String>(
+
+                       // Initial Value
+                       value: dropDownValue ?? '', //items[Provider.of<OrdersItemsList>(context).activeBlock] ?? '',//
+
+                       // Down Arrow Icon
+                       icon: const Icon(Icons.keyboard_arrow_down),
+                        // Array list of items
+                       items: items.map((String items) {
+                         return DropdownMenuItem(
+                           value: items,
+                           child: Text(items, style: TextStyle(
+                               fontSize: 18,
+                               fontWeight: FontWeight.bold,
+                               color: Theme.of(context).accentColor)),
+                         );
+                       }).toList(),
+                       // After selecting the desired option,it will
+                       // change button value to selected value
+                       onChanged: (String newValue) {
+                         setState(() {
+                           dropDownValue = newValue;
+                         });
+
+                         int val;
+                        for(int i =0; i<items.length; i++){
+                          if(items[i] == newValue){
+                            val = i;
+                          }
+                        }
+
+                        print('+++++++++++++++++++++++++++++++++');
+                        print(val);
+
+                         Provider.of<OrdersItemsList>(context,listen: false).activeBlock = val;
+
+                         Future.delayed(Duration.zero, () async {
+                           _dialogforProcessing();
+                           final DateFormat formatter = DateFormat('dd-MM-yyyy');
+                           final String formatted = formatter.format(_selectedDate);
+                           Provider.of<OrdersItemsList>(context, listen: false).GetPendingOrder(formatted.toString(),mode).then((_)async{
+                             setState(() {
+                               _isloading = false;
+                               PendingData =Provider.of<OrdersItemsList>(context,listen: false);
+                               if(PendingData.pendingitems.length<=0){
+                                 _isOrderempty = true;
+                                 _isOrder = false;
+                               }else{
+                                 _isOrderempty = false;
+                                 _isOrder = true;
+                               }
+                               Navigator.of(context).pop();
+                             });
+                           });
+                         });
+
+                       },
+                     ),
+                     // Text(Provider.of<OrdersItemsList>(context).blockOrder.first.groupName, style: TextStyle(
+                     //     fontSize: 18,
+                     //     fontWeight: FontWeight.bold,
+                     //     color: Theme.of(context).accentColor),), //Provider.of<GroupProvider>(context).group.first.groupName),
+                    // Text('15'),
+                     SizedBox(width: 18)
                    ],
                  ),
                ),
@@ -281,7 +382,7 @@ class _PendingOrderState extends State<PendingOrder> {
                          ),
                        ),
                        SizedBox(height: 20.0,),
-                       Text("Hold on! No Orders Assigned Yet",style: TextStyle(color: Colors.grey),),
+                       Text("Hold on! No Orders Assigned Yet",style: TextStyle(fontWeight: FontWeight.bold,color: Colors.grey),),
                      ],
                    ),
                  ),

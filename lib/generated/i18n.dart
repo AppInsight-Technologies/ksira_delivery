@@ -66,7 +66,7 @@ class S implements WidgetsLocalizations {
   String get favorites => "Favorites";
   String get featured_foods => "Featured Foods";
   String get food_categories => "Food Categories";
-  String get grocery_ordered => /*"Grocery Ordered"*/"Item's Detials";
+  String get grocery_ordered => /*"Grocery Ordered"*/"Item's Details";
   String get full_address => "Full Address";
   String get full_name => "Full name";
   String get g => "g";

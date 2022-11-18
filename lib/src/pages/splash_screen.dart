@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import '../../handler/firebase_notification_handler.dart';
+import '../../providers/bottles.dart';
 import '../../providers/ordersitems.dart';
 import '../../src/models/route_argument.dart';
 import '../../src/pages/orders.dart';
@@ -151,6 +152,7 @@ class SplashScreenState extends StateMVC<SplashScreen> {
 
   onDoneLoading() async {
     if(status) {
+      await Provider.of<Bottles>(context, listen: false).getCollectedBottles();
       if(timmer) Navigator.of(context).pushReplacementNamed('/Pages', arguments: 1);
     } else {
       if(timmer) Navigator.of(context).pushReplacementNamed('/Login');

@@ -8,6 +8,8 @@ class RouteArgument {
   String fix_date;
   String fix_time;
   String customer_name;
+  String customerNo;
+  String totalBottles;
   String address;
   String actual_amount;
   String delivery_charge;
@@ -26,6 +28,8 @@ class RouteArgument {
     this.fix_date,
     this.fix_time,
     this.customer_name,
+    this.customerNo,
+    this.totalBottles,
     this.address,
     this.actual_amount,
     this.delivery_charge,
