@@ -37,14 +37,17 @@ class Colors {
 //  Color _mainColor = Color(0xFFFF4E6A);
   /*Color _mainColor = Color(0xFFea5c44);
   Color _mainDarkColor = Color(0xFFea5c44);*/
-  Color _mainColor = Color(0xff2DBEBE);
-  Color _mainDarkColor = /*Color(0xff114475  )*/Color(0xff2DBEBE);
+  Color _mainColor =    Color(0xff25ABB6);  // Color(0xFF39827E) ;
+  Color _mainDarkColor = Color(0xFF39827E) ;  //Color(0xFF44DC5B);
   Color _secondColor = /*(0xff006395 )*/Color(0xFF2C2C2C);
   Color _secondDarkColor = Color(0xFFccccdd);
-  Color _accentColor = Color(0xFF9999aa);
+  Color _accentColor =  Color(0xFF9999aa);
   Color _accentDarkColor = Color(0xFF9999aa);
   Color _scaffoldDarkColor = Color(0xFF2C2C2C);
   Color _scaffoldColor = Color(0xFFFAFAFA);
+
+  //Added
+  Color blockSelectionColor = Color(0xFFE5F3F2);
 
   Color mainColor(double opacity) {
     return this._mainColor.withOpacity(opacity);

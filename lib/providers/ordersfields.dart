@@ -10,6 +10,7 @@ class OrdersFields with ChangeNotifier {
   final String fix_date;
   final String fix_time;
   final String customer_name;
+  final String totalBottles;
   final String actual_amount;
   final String delivery_charge;
   final String imageurl;
@@ -38,6 +39,9 @@ class OrdersFields with ChangeNotifier {
   final String otp;
   final String orderType;
   final String img;
+  final String customerNo;
+  final String droptype;
+  final String SecurityCode;
 
   OrdersFields({
     this.orderid,
@@ -48,6 +52,8 @@ class OrdersFields with ChangeNotifier {
     this.fix_date,
     this.fix_time,
     this.customer_name,
+    this.customerNo,
+    this.totalBottles,
     this.actual_amount,
     this.delivery_charge,
 
@@ -75,5 +81,7 @@ class OrdersFields with ChangeNotifier {
     this.otp,
     this.orderType,
     this.img,
+    this.droptype,
+    this.SecurityCode
   });
 }

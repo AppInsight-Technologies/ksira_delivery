@@ -5,9 +5,6 @@ import '../../src/models/route_argument.dart';
 import '../../utils/prefUtils.dart';
 import 'package:provider/provider.dart';
 
-import '../../providers/ordersitems.dart';
-import '../../utils/prefUtils.dart';
-
 class CashScreen extends StatefulWidget {
   RouteArgument routeArgument;
 

@@ -1,15 +1,20 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import '../constants/images.dart';
-import '../utils/prefUtils.dart';
-import '../providers/cashlogfields.dart';
+import '../../constants/images.dart';
+import '../../providers/cashlogfields.dart';
+import '../../providers/group_order_provider.dart';
+import '../../utils/prefUtils.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../constants/Iconstants.dart';
 import '../providers/ordersfields.dart';
 import '../providers/notificationfield.dart';
 
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../src/models/productlist.dart';
+import '../src/models/productlist.dart';
 
 class OrdersItemsList with ChangeNotifier {
   List<OrdersFields> _items = [];
@@ -23,6 +28,8 @@ class OrdersItemsList with ChangeNotifier {
   List<CashFields> _cashitems=[];
   OrdersFields _dashboard;
   List<NotificationFields> _notItems = [];
+  List<BlockOrder> blockOrder = [];
+  int activeBlock = 0;
   Future<void> GetRestaurant() async {
     // imp feature in adding async is the it automatically wrap into Future.
     var url = IConstants.API_PATH + 'get-resturant';
@@ -60,13 +67,13 @@ class OrdersItemsList with ChangeNotifier {
   Future<void> Login() async { // imp feature in adding async is the it automatically wrap into Future.
     var url = IConstants.API_PATH + "restaurant/delivery-boy-login";
     debugPrint("entered login.......");
-    // try {
+    try {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     debugPrint("entered login1......."+prefs.getString('phonenumber').toString()+"  "+ prefs.getString('Password').toString()+"  "+prefs.getString('tokenid').toString());
     final response = await http.post(url,body: { // await keyword is used to wait to this operation is complete.
-      "mobile": prefs.getString('phonenumber').toString(),
-      "password": prefs.getString('Password').toString(),
-      "tokenId": prefs.getString('tokenid').toString(),
+      "mobile": prefs.getString('phonenumber'),
+      "password": prefs.getString('Password'),
+      "tokenId": prefs.getString('tokenid'),
       "branch": "88",
       "branchtype": "0",
       "mode": "0"
@@ -87,7 +94,10 @@ class OrdersItemsList with ChangeNotifier {
       dataJsondecode.asMap().forEach((index, value) =>
           data.add(dataJsondecode[index] as Map<String, dynamic>)
       );
-      print("id.........." + data[0]['id'].toString()+"..."+data[0]['firstName'].toString());
+      print('++++++++++++++++++++++++++first name');
+      print(data.toString());
+      print( data[0]['firstName'].toString());
+      print("id.........." + data[0]['id'].toString());
       prefs.setString('id', data[0]['id'].toString());
       prefs.setString('first_name', data[0]['firstName'].toString());
       prefs.setString('last_name', data[0]['lastName'].toString());
@@ -102,13 +112,13 @@ class OrdersItemsList with ChangeNotifier {
 
 
     }
-    //
-    // }
-    // catch (error) {
-    //
-    //   print(error);
-    //   throw error;
-    // }
+
+    }
+    catch (error) {
+
+      print(error);
+      throw error;
+    }
   }
 
   Future<void> dashboard(String date) async {
@@ -127,6 +137,12 @@ class OrdersItemsList with ChangeNotifier {
       );
       final responseJson = json.decode(response.body);
       debugPrint("dashboard...."+responseJson.toString());
+      print(url);
+      print( {
+        // await keyword is used to wait to this operation is complete.
+        "id": prefs.getString('id'),
+        "date": /*"26-10-2021"*/date,
+      }.toString());
     _recentitems.clear();
       //_dashboard.clear();
       print(responseJson);
@@ -282,6 +298,7 @@ class OrdersItemsList with ChangeNotifier {
             fix_date: data[i]['fixDate'].toString(),
             fix_time: data[i]['fixtime'].toString(),
             customer_name: data[i]['customerName'].toString(),
+            customerNo :  data[i]['customer_d'].toString(),
             actual_amount: (data[i]['actualAmount'] == "") ? "0.00" : double.parse(data[i]['actualAmount']).toStringAsFixed(2),
             delivery_charge: data[i]['deliveryCharge'].toString(),
             orderstatus: data[i]['orderStatus'].toString(),
@@ -346,6 +363,25 @@ class OrdersItemsList with ChangeNotifier {
 */
   }
 
+
+  Future<List<productList>> productListApi(String id) async {
+    var url = IConstants.API_PATH + 'v3/delivery/partner/get-drop-type';
+  debugPrint("jhgfghj..."+id);
+    final response = await http.post(url, body: {
+      "id": id
+    });
+    final responseJson = json.decode(utf8.decode(response.bodyBytes));
+    debugPrint("responseJsonPrint.....1.."+responseJson.toString());
+    if (responseJson.toString() != "[]") {
+      List<productList> data = [];
+      responseJson["data"].forEach((v) {
+        data.add(productList.fromJson(responseJson));
+      });
+      return Future.value(data);
+    } else {}
+    notifyListeners();
+  }
+
   List<OrdersFields> get items {
     return [..._items];
   }
@@ -383,14 +419,18 @@ class OrdersItemsList with ChangeNotifier {
             order_amount:responseJson['orderAmount'].toString(),
               imageurl: data[i]['image'].toString(),
               customer_name:responseJson["customerName"].toString(),
+             customerNo: responseJson["customer_d"].toString(),
+            totalBottles: responseJson["totalbottles"].toString(),
             address: responseJson['address'].toString(),
             orderstatus: responseJson['orderStatus'].toString(),
             payment_type: responseJson['paymentType'].toString(),
             fix_time: responseJson['fixtime'].toString(),
+            droptype: responseJson["dropType"].toString(),
+            SecurityCode: responseJson["securityCode"].toString(),
             otp: (responseJson['otp'].toString() != "null") ? responseJson['otp'].toString() : "0",
           ));
           print('hi.............');
-          debugPrint(data[i]['image'].toString());
+          debugPrint(responseJson["dropType"].toString());
           debugPrint(responseJson['otp'].toString());
           debugPrint(responseJson['latitude'].toString());
           debugPrint(responseJson['logitude'].toString());
@@ -496,10 +536,11 @@ class OrdersItemsList with ChangeNotifier {
     }
   }
   Future<void> GetPendingOrder(String date, String mode) async { // imp feature in adding async is the it automatically wrap into Future.
-    var url = IConstants.API_PATH + 'delivery-pending-order';
+    var url = IConstants.API_PATH + 'delivery-pending-order-new';
     SharedPreferences prefs = await SharedPreferences.getInstance();
     _pendingitems.clear();
-    try {
+    blockOrder.clear();
+   try {
       final response = await http
           .post(
           url,
@@ -511,16 +552,22 @@ class OrdersItemsList with ChangeNotifier {
       );
       final responseJson = json.decode(response.body);
       _pendingitems.clear();
-      print(responseJson);
       if(responseJson.toString() != "[]"){
         /*final dataJson = json.encode(responseJson['data']); //fetching categories data
         final dataJsondecode = json.decode(dataJson);*/
 
-        List data = []; //list for categories
-
+        List newData = [];
         responseJson.asMap().forEach((index, value) =>
-            data.add(responseJson[index] as Map<String, dynamic>)
+            newData.add(responseJson[index] as Map<String, dynamic>)
         );
+
+        newData.forEach((element) {
+          print(element.toString());
+          blockOrder.add(BlockOrder(element['group_name'], element['delivery_partner_id'], element['customer_id'].toString(), element['customers_orders']));
+        });
+
+        List data = newData[activeBlock]['customers_orders'];
+
         for(int i = 0; i < data.length; i++) {
           var delivery = "";
           var img;

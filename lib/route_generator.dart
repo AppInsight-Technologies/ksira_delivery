@@ -12,6 +12,8 @@ import 'src/pages/settings.dart';*/
 
 import 'package:flutter/material.dart';
 import '../../src/pages/cash_logs.dart';
+import '../../src/pages/collected_bottle.dart';
+import '../../src/pages/customer.dart';
 import '../../src/pages/orders_history.dart';
 import '../../src/pages/pending.dart';
 import '../../src/pages/return.dart';
@@ -61,6 +63,10 @@ class RouteGenerator {
         return MaterialPageRoute(builder: (_) => ReturnWidget(routeArgument: args as RouteArgument));
       case '/ReturnDetails':
         return MaterialPageRoute(builder: (_) => ReturnsWidget(routeArgument: args as RouteArgument));
+      case '/Customer':
+        return MaterialPageRoute(builder: (_) => Customer(routeArgument: args as RouteArgument));
+      case '/CollectedBottle':
+        return MaterialPageRoute(builder: (_) => CollectedBottle(routeArgument: args as RouteArgument));
       default:
       // If there is no such named route in the switch statement, e.g. /third
       //return MaterialPageRoute(builder: (_) => PagesTestWidget(currentTab: 1));

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../constants/images.dart';
 import '../../generated/i18n.dart';
+import '../../providers/bottles.dart';
 import '../../providers/ordersitems.dart';
 import '../../src/models/route_argument.dart';
 import 'package:intl/intl.dart';
@@ -183,7 +184,8 @@ class _PendingOrderState extends State<TotalOrder> {
         backgroundColor: /*Colors.transparent*/Theme.of(context).accentColor,
         elevation: 0,
         centerTitle: true,
-        title: SvgPicture.asset("assets/img/Logo.svg", width: 40, height: 45,/*color: Colors.white,*/),/*Text(
+       title: SvgPicture.asset("assets/img/Logo.svg", width: 40, height: 45,),
+        /*title: Image.asset("assets/img/Logo.png"),*//*Text(
           S.of(context).orders,
           style: Theme.of(context).textTheme.title.merge(TextStyle(letterSpacing: 1.3)),
 
@@ -367,6 +369,7 @@ class _PendingOrderState extends State<TotalOrder> {
                             SizedBox(height: 10,),
                             GestureDetector(
                               onTap: (){
+                                Provider.of<Bottles>(context, listen: false).getCollectedBottles();
                                 Navigator.of(context).pushNamed('/OrderDetails',
                                   arguments: RouteArgument(
                                     id:OrdersData.items[i].orderid,
@@ -379,6 +382,7 @@ class _PendingOrderState extends State<TotalOrder> {
                                     address:OrdersData.items[i].address,
                                     actual_amount: OrdersData.items[i].actual_amount,
                                     delivery_charge:OrdersData.items[i].delivery_charge,
+                                    totalBottles: OrdersData.items[i].totalBottles,
                                     otp:OrdersData.items[i].otp,
                                     index: i,
                                   ),

@@ -1,20 +1,26 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:connectivity/connectivity.dart';
 import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import '../../constants/images.dart';
+import '../../providers/bottles.dart';
 import '../../utils/prefUtils.dart';
 import 'package:intl/intl.dart';
 import 'package:mvc_pattern/mvc_pattern.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../generated/i18n.dart';
+import '../../providers/group_provider.dart';
+import '../../utils/ResponsiveLayout.dart';
 import '../controllers/order_controller.dart';
 import '../elements/CircularLoadingWidget.dart';
 import '../../providers/ordersitems.dart';
 import '../../src/models/route_argument.dart';
 import '../../src/elements/ShoppingCartButtonWidget.dart';
+import '../models/productlist.dart';
 
 class OrdersWidget extends StatefulWidget {
   final GlobalKey<ScaffoldState> parentScaffoldKey;
@@ -44,6 +50,7 @@ class _OrdersWidgetState extends StateMVC<OrdersWidget> {
   String wallet="0";
   var DashBoradData;
   var currency_format = "";
+  Future<List<productList>> _futureProductList = Future.value([]);
 
   _OrdersWidgetState() : super(OrderController()) {
     _con = controller;
@@ -86,6 +93,7 @@ class _OrdersWidgetState extends StateMVC<OrdersWidget> {
         }
       });
     });
+
   }
 
   @override
@@ -99,7 +107,7 @@ class _OrdersWidgetState extends StateMVC<OrdersWidget> {
       _dialogforProcessing();
       Provider.of<OrdersItemsList>(context, listen: false).dashboard(datecontroller.text).then((_)async{
         setState(() {
-          _isloading = false;
+
           DashBoradData =Provider.of<OrdersItemsList>(context,listen: false);
           total_pending =DashBoradData.dashboarditems.total_pending;
           debugPrint("pending1..."+total_pending.toString());
@@ -119,6 +127,19 @@ class _OrdersWidgetState extends StateMVC<OrdersWidget> {
           Navigator.of(context).pop();
         });
       });
+
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      Provider.of<OrdersItemsList>(context,listen:false).productListApi(prefs.getString('id')).then((value) async {
+        setState(() {
+          _isloading = false;
+          _futureProductList = Future.value(value);
+        });
+        debugPrint("_futureProductList...."+_futureProductList.toString());
+        debugPrint("jhgfdertyuio..."+value.length.toString());
+
+      });
+
+
    /*   _dialogforProcessing();
       Provider.of<OrdersItemsList>(context,listen:false).GetOrders("0").then((
           _) async {
@@ -213,10 +234,19 @@ class _OrdersWidgetState extends StateMVC<OrdersWidget> {
         lastDate: new DateTime(now.year, now.month + 10, now.day),
         builder: (context, child) {
           return Theme(
-            data: ThemeData.light().copyWith(
-              primaryColor:  Theme.of(context).accentColor,//Head background
-              accentColor: Theme.of(context).accentColor,//selection color
-            ),// This will change to light theme.
+            data: Theme.of(context).copyWith(
+              colorScheme: ColorScheme.light(
+                primary: Theme.of(context).accentColor, // <-- SEE HERE
+                onPrimary: Colors.white, // <-- SEE HERE
+                onSurface: Color(0xFF354B80), // <-- SEE HERE
+              ),
+              textButtonTheme: TextButtonThemeData(
+                style: TextButton.styleFrom(
+                  primary: Colors.white,
+                    backgroundColor: Theme.of(context).accentColor// button text color
+                ),
+              ),
+            ),
             child: child,
           );
         },
@@ -253,6 +283,16 @@ class _OrdersWidgetState extends StateMVC<OrdersWidget> {
         });
     }
 
+    double deviceWidth = MediaQuery.of(context).size.width;
+    int widgetsInRow =  2;
+    if (deviceWidth > 1200) {
+      widgetsInRow = 2;
+    } else if (deviceWidth < 768) {
+      widgetsInRow = 2;
+    }
+    double aspectRatio = (deviceWidth - (20 + ((widgetsInRow - 1) * 10))) / widgetsInRow / 170;
+
+
     return Scaffold(
       key: _con.scaffoldKey,
       backgroundColor: Colors.white,
@@ -271,12 +311,12 @@ class _OrdersWidgetState extends StateMVC<OrdersWidget> {
           style: Theme.of(context).textTheme.title.merge(TextStyle(letterSpacing: 1.3)),
 
         ),*/
-        SvgPicture.asset("assets/img/Logo.svg", width: 40, height: 45,/*color: Colors.white,*/),
-       /* Image.asset( "assets/img/Logo.webp",
+        SvgPicture.asset("assets/img/Logo.svg", width: 40, height: 45,
+        // Image.asset( "assets/img/Logo.png",
          // width: MediaQuery.of(context).size.width*0.60,
          // height: 300,
           //fit: BoxFit.fill,
-        ),*/
+        ),
     /*    actions: <Widget>[
           GestureDetector(
             onTap: (){
@@ -319,8 +359,7 @@ class _OrdersWidgetState extends StateMVC<OrdersWidget> {
                         Row(
                           children: [
                             Text(total_pending,style: TextStyle(fontWeight: FontWeight.bold,color:Color(0xFF354B80),fontSize: 18),),
-                            Image.asset("assets/img/right_arrow.png",width: 15,height:
-                              15,color:Color(0xFF354B80),),
+                            Image.asset("assets/img/right_arrow.png",width: 15,height:15,color:Color(0xFF354B80)),
                           ],
                         )
                       ],
@@ -581,8 +620,7 @@ class _OrdersWidgetState extends StateMVC<OrdersWidget> {
                       ),
                     ],
                   ),
-                ),*/
-               /* SizedBox(height: 10,),
+                ),*//* SizedBox(height: 10,),
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 15),
                  width: MediaQuery.of(context).size.width,
@@ -662,11 +700,12 @@ class _OrdersWidgetState extends StateMVC<OrdersWidget> {
                           ),
                         ),
                         SizedBox(height: 20.0,),
-                        Text("Hold on! No Orders Assigned Yet",style: TextStyle(color: Colors.grey),),
+                        Text("Hold on! No Orders Assigned Yet",style: TextStyle(fontWeight: FontWeight.bold,color: Colors.grey),),
                       ],
                     ),
                   ),
-                ): ListView.separated(
+                ):
+                ListView.separated(
                         scrollDirection: Axis.vertical,
                         shrinkWrap: true,
                         primary: false,
@@ -874,6 +913,171 @@ class _OrdersWidgetState extends StateMVC<OrdersWidget> {
                           );
                         },
                       ),
+                SizedBox(height: 15,),
+                Container(
+                  child: FutureBuilder<List<productList>>(
+                    future: _futureProductList,
+                    builder: (BuildContext context,AsyncSnapshot<List<productList>> snapshot){
+                      final promoData = snapshot.data;
+                      return promoData != null && promoData.first.data.first.datas.length > 0?
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(left: 15.0),
+                            child: Text('Product',style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),),
+                          ),
+                          SizedBox(height: 10,),
+                          Container(
+                              padding: EdgeInsets.only(left: 15,right: 10),
+                              // height: 150,
+                              child: GridView.builder(
+                                physics: NeverScrollableScrollPhysics(),
+                                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: widgetsInRow,
+                                  crossAxisSpacing: 10,
+                                  mainAxisSpacing: 10,
+                                  childAspectRatio: aspectRatio,
+                                ),
+                                shrinkWrap: true,
+                                controller: new ScrollController(keepScrollOffset: false),
+                                itemCount: promoData.first.data.first.datas.length,
+                                itemBuilder: (_, i) =>
+                                    Container(
+                                      decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(10),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.grey[200],
+                                              blurRadius: 10,
+                                              offset: Offset(0, 5),
+                                            )
+                                          ]
+                                      ),
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        children: [
+                                          CachedNetworkImage(
+                                            height: 60,
+                                            width: 60,
+                                            fit: BoxFit.cover,
+                                            imageUrl: promoData.first.data.first.datas[i].image,
+                                            placeholder: (context, url) => Image.asset(
+                                              'assets/img/default_product.png',
+                                              fit: BoxFit.cover,
+                                              height: 60,
+                                              width: 60,
+                                            ),
+                                            errorWidget: (context, url, error) =>Image.asset(
+                                              'assets/img/default_product.png',
+                                              fit: BoxFit.cover,
+                                              height: 60,
+                                              width: 60,
+                                            ),
+                                          ),
+                                          Text(promoData.first.data.first.datas[i].item,
+                                            maxLines:2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: Colors.black,
+                                              fontSize: 14,
+                                            ),),
+                                          Text("Qty: "+promoData.first.data.first.datas[i].quantity,style: TextStyle(
+                                            color: Colors.black,
+                                            fontSize: 12,
+                                          ),),
+                                        ],
+                                      ),
+                                    ),
+                              )
+
+
+                            // ListView.separated(
+                            //   scrollDirection: Axis.horizontal,
+                            //   shrinkWrap: true,
+                            //   primary: false,
+                            //   itemCount: 5,//OrdersWidget.ordersData.items.length,
+                            //   separatorBuilder: (context, index) {
+                            //     return  SizedBox(width: 10,);
+                            //   },
+                            //   itemBuilder: (context, i) {
+                            //     return
+                            //
+                            //
+                            //       Padding(
+                            //       padding: EdgeInsets.only(left: 15),
+                            //       child: Container(
+                            //         height: 150,
+                            //
+                            //         width: MediaQuery.of(context).size.width/3-10,
+                            //         decoration: BoxDecoration(
+                            //             color: Colors.white,
+                            //             borderRadius: BorderRadius.circular(10),
+                            //             boxShadow: [
+                            //               BoxShadow(
+                            //                 color: Colors.grey[300],
+                            //                 //spreadRadius: 1,
+                            //                 blurRadius: 5,
+                            //                 offset: Offset(0, 10),
+                            //               )
+                            //             ]
+                            //         ),
+                            //         child: Column(
+                            //           mainAxisAlignment: MainAxisAlignment.center,
+                            //           crossAxisAlignment: CrossAxisAlignment.center,
+                            //           children: [
+                            //             CachedNetworkImage(
+                            //               height: 60,
+                            //               width: 60,
+                            //               fit: BoxFit.cover,
+                            //               imageUrl: 'assets/img/defaultImg.png',
+                            //               placeholder: (context, url) => Image.asset(
+                            //                 'assets/img/defaultImg.png',
+                            //                 fit: BoxFit.cover,
+                            //                 height: 60,
+                            //                 width: 60,
+                            //               ),
+                            //               errorWidget: (context, url, error) =>Image.asset(
+                            //                 'assets/img/defaultImg.png',
+                            //                 fit: BoxFit.cover,
+                            //                 height: 60,
+                            //                 width: 60,
+                            //               ),
+                            //             ),
+                            //             Text("title",style: TextStyle(
+                            //               fontWeight: FontWeight.bold,
+                            //               color: Color(0xFF354B80),
+                            //               fontSize: 15,
+                            //             ),),
+                            //             Text("Qty",style: TextStyle(
+                            //               fontWeight: FontWeight.bold,
+                            //               color: Color(0xFF354B80),
+                            //               fontSize: 15,
+                            //             ),),
+                            //           ],
+                            //         ),
+                            //       ),
+                            //     );
+                            //   },
+                            // ),
+                          ),
+                        ],
+                      ): SizedBox.shrink();
+
+                    },
+                  ),
+                )
+
+
+
+
               ],
             ) :
             Center(
@@ -925,6 +1129,7 @@ class _OrdersWidgetState extends StateMVC<OrdersWidget> {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             Column(
+              mainAxisAlignment: MainAxisAlignment.end,
               children: <Widget>[
                 SizedBox(
                   height: 7.0,
@@ -963,6 +1168,7 @@ class _OrdersWidgetState extends StateMVC<OrdersWidget> {
                // Navigator.of(context).pushNamed(' /CashScreen');
               },
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: <Widget>[
                   SizedBox(
                     height: 7.0,
@@ -989,9 +1195,63 @@ class _OrdersWidgetState extends StateMVC<OrdersWidget> {
             ),
             GestureDetector(
               onTap: () {
+               Provider.of<Bottles>(context,listen: false).getCollectedBottles();
+                Navigator.of(context).pushNamed('/CollectedBottle');
+              },
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: <Widget>[
+                  SizedBox(
+                    height: 7.0,
+                  ),
+                  Container( padding: EdgeInsets.only(top: 4),
+                    color: Colors.transparent, child: Text( Provider.of<Bottles>(context).collectedBottles == 'null' ||  Provider.of<Bottles>(context).collectedBottles == null ?  '0': Provider.of<Bottles>(context).collectedBottles, style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color:Theme.of(context).accentColor))),
+                  SizedBox(
+                    height: 5.0,
+                  ),
+                  Text(
+                      "Collected Bottle",
+                      style: TextStyle(
+                          color: Colors.grey, fontSize: 10.0)),
+                ],
+              ),
+            ),
+            GestureDetector(
+              onTap: () async{
+              Provider.of<GroupProvider>(context,listen: false).getByBlock();
+               // Provider.of<GroupProvider>(context,listen: false).getByBlock(prefs.get("id"));
+               Navigator.of(context).pushNamed('/Customer');
+              },
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: <Widget>[
+                  SizedBox(
+                    height: 7.0,
+                  ),
+                  CircleAvatar(
+                    radius: 13.0,
+                    backgroundColor: Colors.transparent,
+                    child: Image.asset("assets/img/profile.png",
+                      color: Colors.grey ,
+                      width: 50,
+                      height: 30,),
+                  ),
+                  SizedBox(
+                    height: 5.0,
+                  ),
+                  Text(
+                      "Customer",
+                      style: TextStyle(
+                          color: Colors.grey, fontSize: 10.0)),
+                ],
+              ),
+            ),
+            GestureDetector(
+              onTap: () {
                 Navigator.of(context).pushNamed('/Profile', arguments: 2);
               },
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: <Widget>[
                   SizedBox(
                     height: 7.0,

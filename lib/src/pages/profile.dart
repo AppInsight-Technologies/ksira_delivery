@@ -36,7 +36,6 @@ class _ProfileWidgetState extends StateMVC<ProfileWidget> {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       setState(() {
         name = prefs.getString("first_name") + " " + prefs.getString("last_name");
-        print('name.......................'+prefs.getString("first_name"));
         email = prefs.getString("email");
         address = prefs.getString("address");
         wallet = prefs.getString("wallet_balance");
@@ -87,7 +86,6 @@ class _ProfileWidgetState extends StateMVC<ProfileWidget> {
                       Icons.location_on,
                       color: Theme.of(context).hintColor,
                     ),
-
                     title: Text(
                       "Address",
                       style: Theme.of(context).textTheme.headline4,

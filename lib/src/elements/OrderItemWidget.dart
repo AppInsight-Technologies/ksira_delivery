@@ -15,6 +15,8 @@ class OrderItemWidget extends StatelessWidget {
   final String itemorderdate;
   final String imageurl;
   final String itemTax;
+  final String droptype;
+  final String SecurityCode;
   //final FoodOrder foodOrder;
   //final Order order;
   const OrderItemWidget({
@@ -27,10 +29,17 @@ class OrderItemWidget extends StatelessWidget {
     this.itemorderdate,
     this.imageurl,
     this.itemTax,
+    this.droptype,
+    this.SecurityCode,
     /*this.order*/
   }) : super(key: key);
   @override
   Widget build(BuildContext context) {
+    List<Map> data = [];
+    final List droptypefinal = droptype.split(',');
+    debugPrint("cxzXz...."+droptypefinal.toString());
+    data = List.generate(droptypefinal.length,
+            (index) => {'id': index, 'name': droptypefinal[index]});
     return InkWell(
       splashColor: Theme.of(context).accentColor,
       focusColor: Theme.of(context).accentColor,
@@ -124,14 +133,151 @@ class OrderItemWidget extends StatelessWidget {
                             fontSize: 15,
                             color: Colors.black,
                           )),
-                       /* Text(
-                          'Qty: ${itemqty}',
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 2,
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: Colors.black,
-                          )),*/
+                          SizedBox(height: 10,),
+                        data.length > 0 ?
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: ListView.separated(
+                                  separatorBuilder: (context, index) => SizedBox(height: 10,),
+                                  shrinkWrap: true,
+                                 // scrollDirection: Axis.horizontal,
+                                  physics: NeverScrollableScrollPhysics(),
+                                  itemCount: data.length,
+                                  itemBuilder: (_, i) {
+                                    return Column(
+                                      children: [
+                                        if(data[i]['name'] == "Door Bell")
+                                          Row(
+                                            children: [
+                                              Image.asset(
+                                                'assets/img/doorBell.png',
+                                                fit: BoxFit.cover,
+                                                height: 15,
+                                                width: 15,
+                                                color: Theme.of(context).accentColor,
+                                              ),
+                                              SizedBox(width: 5,),
+                                              Text(
+                                                  "Door Bell",
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.w500,
+                                                    fontSize: 12,
+                                                    color: Colors.black,
+                                                  )),
+                                            ],
+                                          ),
+                                        if(data[i]['name'] == "Put on Bags")
+                                          Row(
+                                            children: [
+                                              Image.asset(
+                                                'assets/img/PutonBag.png',
+                                                fit: BoxFit.cover,
+                                                height: 15,
+                                                width: 15,
+                                                color: Theme.of(context).accentColor,
+                                              ),
+                                              SizedBox(width: 5,),
+                                              Text(
+                                                  "Put on Bags",
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.w500,
+                                                    fontSize: 12,
+                                                    color: Colors.black,
+                                                  )),
+                                            ],
+                                          ),
+                                        if(data[i]['name'] == "Open Safety Door")
+                                          Row(
+                                            children: [
+                                              Image.asset(
+                                                'assets/img/safetyDoor.png',
+                                                fit: BoxFit.cover,
+                                                height: 15,
+                                                width: 15,
+                                                color: Theme.of(context).accentColor,
+                                              ),
+                                              SizedBox(width: 5,),
+                                              Text(
+                                                  "Open Safety Door",
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.w500,
+                                                    fontSize: 12,
+                                                    color: Colors.black,
+                                                  )),
+                                            ],
+                                          ),
+                                        if(data[i]['name'] == "Put Outside Cupboard")
+                                          Row(
+                                            children: [
+                                              Image.asset(
+                                                'assets/img/outsideCupboard.png',
+                                                fit: BoxFit.cover,
+                                                height: 15,
+                                                width: 15,
+                                                color: Theme.of(context).accentColor,
+                                              ),
+                                              SizedBox(width: 5,),
+                                              Text(
+                                                  "Put Outside Cupboard",
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.w500,
+                                                    fontSize: 12,
+                                                    color: Colors.black,
+                                                  )),
+                                            ],
+                                          ),
+                                        if(data[i]['name'] == "Call Customer")
+                                          Row(
+                                            children: [
+                                              Image.asset(
+                                                'assets/img/callCustomer.png',
+                                                fit: BoxFit.cover,
+                                                height: 15,
+                                                width: 15,
+                                                color: Theme.of(context).accentColor,
+                                              ),
+                                              SizedBox(width: 5,),
+                                              Text(
+                                                  "Call Customer",
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.w500,
+                                                    fontSize: 12,
+                                                    color: Colors.black,
+                                                  )),
+                                            ],
+                                          ),
+                                        if(data[i]['name'] == "Dont Ring Bell")
+                                          Row(
+                                            children: [
+                                              Image.asset(
+                                                'assets/img/dontRing.png',
+                                                fit: BoxFit.cover,
+                                                height: 15,
+                                                width: 15,
+                                                color: Theme.of(context).accentColor,
+                                              ),
+                                              SizedBox(width: 5,),
+                                              Text(
+                                                  "Dont Ring Bell",
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.w500,
+                                                    fontSize: 12,
+                                                    color: Colors.black,
+                                                  )),
+                                            ],
+                                          ),
+                                      ],
+                                    );
+                                  }
+                              ),
+                            ),
+                          ],
+                        ):SizedBox.shrink(),
+
+
                       ],
                     ),
                   ),
@@ -156,6 +302,13 @@ class OrderItemWidget extends StatelessWidget {
                           fontSize: 15,
                           color: Theme.of(context).accentColor,
                         )),
+                      Text(
+                          SecurityCode,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 12,
+                            color: Theme.of(context).accentColor,
+                          )),
                       /*Text(
                         DateFormat('HH:mm')
                             .format(DateTime.parse(itemorderdate)),
@@ -166,9 +319,12 @@ class OrderItemWidget extends StatelessWidget {
                         )),*/
                     ],
                   ),
+
                 ],
               ),
-            )
+            ),
+
+
           ],
         ),
       ),

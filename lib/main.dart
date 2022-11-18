@@ -4,6 +4,9 @@ import 'package:firebase_analytics/observer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:global_configuration/global_configuration.dart';
+import '../../providers/bottles.dart';
+import '../../providers/group_provider.dart';
+import '../../src/pages/customer.dart' show BlockList;
 import 'package:provider/provider.dart';
 
 import 'config/app_config.dart' as config;
@@ -27,11 +30,18 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(providers: [
-      ChangeNotifierProvider.value(
-        value: OrdersItemsList(),
-      ),
-    ],
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (BuildContext context) => OrdersItemsList(),
+        ),
+        ChangeNotifierProvider(
+          create: (BuildContext context) => GroupProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (BuildContext context) => Bottles(),
+        ),
+      ],
       child: DynamicTheme(
           defaultBrightness: Brightness.light,
           data: (brightness) {
@@ -46,16 +56,38 @@ class MyApp extends StatelessWidget {
                 hintColor: config.Colors().secondColor(1),
                 splashColor: Colors.transparent,
                 textTheme: TextTheme(
-                  headline1: TextStyle(fontSize: 20.0, color: config.Colors().secondColor(1)),
-                  headline4: TextStyle(fontSize: 18.0, fontWeight: FontWeight.w600, color: config.Colors().secondColor(1)),
-                  headline3: TextStyle(fontSize: 20.0, fontWeight: FontWeight.w600, color: config.Colors().secondColor(1)),
-                  headline2: TextStyle(fontSize: 22.0, fontWeight: FontWeight.w700, color: config.Colors().mainColor(1)),
-                  headline5: TextStyle(fontSize: 22.0, fontWeight: FontWeight.w300, color: config.Colors().secondColor(1)),
-                  subtitle1: TextStyle(fontSize: 15.0, fontWeight: FontWeight.w500, color: config.Colors().secondColor(1)),
-                  subtitle2: TextStyle(fontSize: 16.0, fontWeight: FontWeight.w600, color: config.Colors().mainColor(1)),
-                  bodyText1: TextStyle(fontSize: 12.0, color: config.Colors().secondColor(1)),
-                  bodyText2: TextStyle(fontSize: 14.0, color: config.Colors().secondColor(1)),
-                  caption: TextStyle(fontSize: 12.0, color: config.Colors().accentColor(1)),
+                  headline1: TextStyle(
+                      fontSize: 20.0, color: config.Colors().secondColor(1)),
+                  headline4: TextStyle(
+                      fontSize: 18.0,
+                      fontWeight: FontWeight.w600,
+                      color: config.Colors().secondColor(1)),
+                  headline3: TextStyle(
+                      fontSize: 20.0,
+                      fontWeight: FontWeight.w600,
+                      color: config.Colors().secondColor(1)),
+                  headline2: TextStyle(
+                      fontSize: 22.0,
+                      fontWeight: FontWeight.w700,
+                      color: config.Colors().mainColor(1)),
+                  headline5: TextStyle(
+                      fontSize: 22.0,
+                      fontWeight: FontWeight.w300,
+                      color: config.Colors().secondColor(1)),
+                  subtitle1: TextStyle(
+                      fontSize: 15.0,
+                      fontWeight: FontWeight.w500,
+                      color: config.Colors().secondColor(1)),
+                  subtitle2: TextStyle(
+                      fontSize: 16.0,
+                      fontWeight: FontWeight.w600,
+                      color: config.Colors().mainColor(1)),
+                  bodyText1: TextStyle(
+                      fontSize: 12.0, color: config.Colors().secondColor(1)),
+                  bodyText2: TextStyle(
+                      fontSize: 14.0, color: config.Colors().secondColor(1)),
+                  caption: TextStyle(
+                      fontSize: 12.0, color: config.Colors().accentColor(1)),
                 ),
               );
             } else {
@@ -68,21 +100,43 @@ class MyApp extends StatelessWidget {
                 hintColor: config.Colors().secondDarkColor(1),
                 focusColor: config.Colors().accentDarkColor(1),
                 textTheme: TextTheme(
-                  headline1: TextStyle(fontSize: 20.0, color: config.Colors().secondDarkColor(1)),
-                  headline4:
-                  TextStyle(fontSize: 18.0, fontWeight: FontWeight.w600, color: config.Colors().secondDarkColor(1)),
-                  headline3:
-                  TextStyle(fontSize: 20.0, fontWeight: FontWeight.w600, color: config.Colors().secondDarkColor(1)),
-                  headline2:
-                  TextStyle(fontSize: 22.0, fontWeight: FontWeight.w700, color: config.Colors().mainDarkColor(1)),
-                  headline5:
-                  TextStyle(fontSize: 22.0, fontWeight: FontWeight.w300, color: config.Colors().secondDarkColor(1)),
-                  subtitle1:
-                  TextStyle(fontSize: 15.0, fontWeight: FontWeight.w500, color: config.Colors().secondDarkColor(1)),
-                  subtitle2: TextStyle(fontSize: 16.0, fontWeight: FontWeight.w600, color: config.Colors().mainDarkColor(1)),
-                  bodyText1: TextStyle(fontSize: 12.0, color: config.Colors().secondDarkColor(1)),
-                  bodyText2: TextStyle(fontSize: 16.0,fontWeight: FontWeight.bold, color: config.Colors().secondDarkColor(1)),
-                  caption: TextStyle(fontSize: 12.0, color: config.Colors().secondDarkColor(0.6)),
+                  headline1: TextStyle(
+                      fontSize: 20.0,
+                      color: config.Colors().secondDarkColor(1)),
+                  headline4: TextStyle(
+                      fontSize: 18.0,
+                      fontWeight: FontWeight.w600,
+                      color: config.Colors().secondDarkColor(1)),
+                  headline3: TextStyle(
+                      fontSize: 20.0,
+                      fontWeight: FontWeight.w600,
+                      color: config.Colors().secondDarkColor(1)),
+                  headline2: TextStyle(
+                      fontSize: 22.0,
+                      fontWeight: FontWeight.w700,
+                      color: config.Colors().mainDarkColor(1)),
+                  headline5: TextStyle(
+                      fontSize: 22.0,
+                      fontWeight: FontWeight.w300,
+                      color: config.Colors().secondDarkColor(1)),
+                  subtitle1: TextStyle(
+                      fontSize: 15.0,
+                      fontWeight: FontWeight.w500,
+                      color: config.Colors().secondDarkColor(1)),
+                  subtitle2: TextStyle(
+                      fontSize: 16.0,
+                      fontWeight: FontWeight.w600,
+                      color: config.Colors().mainDarkColor(1)),
+                  bodyText1: TextStyle(
+                      fontSize: 12.0,
+                      color: config.Colors().secondDarkColor(1)),
+                  bodyText2: TextStyle(
+                      fontSize: 16.0,
+                      fontWeight: FontWeight.bold,
+                      color: config.Colors().secondDarkColor(1)),
+                  caption: TextStyle(
+                      fontSize: 12.0,
+                      color: config.Colors().secondDarkColor(0.6)),
                 ),
               );
             }
@@ -104,7 +158,8 @@ class MyApp extends StatelessWidget {
                       GlobalWidgetsLocalizations.delegate,
                     ],
                     supportedLocales: S.delegate.supportedLocales,
-                    localeListResolutionCallback: S.delegate.listResolution(fallback: const Locale('en', '')),
+                    localeListResolutionCallback: S.delegate
+                        .listResolution(fallback: const Locale('en', '')),
                     navigatorObservers: [
                       FirebaseAnalyticsObserver(analytics: analytics),
                     ],

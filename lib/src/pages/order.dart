@@ -1,15 +1,17 @@
-
 import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import '../../constants/Iconstants.dart';
+import '../../providers/bottles.dart';
 import '../../utils/prefUtils.dart';
 import 'package:intl/intl.dart' show DateFormat;
 import 'package:mvc_pattern/mvc_pattern.dart';
 import 'package:pin_code_text_field/pin_code_text_field.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../generated/i18n.dart';
@@ -21,16 +23,13 @@ import '../../src/elements/OrderItemWidget.dart';
 import '../../src/elements/ShoppingCartButtonWidget.dart';
 import '../../providers/ordersitems.dart';
 import '../../src/controllers/order_details_controller.dart';
-
-
+import '../../config/app_config.dart' as config;
 
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-
 class OrderWidget extends StatefulWidget {
   RouteArgument routeArgument;
-
 
   OrderWidget({Key key, this.routeArgument}) : super(key: key);
 
@@ -54,6 +53,7 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
   String _actualamount = "";
   String _deliverycharge = "";
   String _mobile = "";
+  String totalBottlesCount = '';
   double _latitude = 0.0;
   double _longitude = 0.0;
   var ordersData;
@@ -73,9 +73,49 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
   TextEditingController _ReceiverText;
   String mode;
   String _fromScreen;
+  String _customerNo = '';
+  int _increaseBottleCount;
+  //int _increaseBottleCount = 10;
+  bool increased = false;
+  int receivedBottle = 0;
+
+  TextEditingController textEditingController = TextEditingController();
 
   _OrderWidgetState() : super(OrderDetailsController()) {
     _con = controller;
+  }
+
+  //get increaseBottleCount => _increaseBottleCount;
+  int get increaseBottleCount {
+    return _increaseBottleCount ??
+        (totalBottlesCount == '' ? 0 : int.parse(totalBottlesCount));
+  }
+
+  set increaseBottleCount(int val) {
+    //  int tCount = increaseBottleCount;
+    int tCount = increased ? increaseBottleCount : int.parse(totalBottlesCount);
+    debugPrint('+++++++++++++++++++++++++++tCount');
+    debugPrint(tCount.toString());
+    int cCount = int.parse(
+        (textEditingController.text == '' ? '0' : textEditingController.text));
+
+    debugPrint('+++++++++++++++++++++++++++cCount');
+    debugPrint(cCount.toString());
+
+    setState(() {
+      receivedBottle = int.parse(
+          textEditingController.text == null || textEditingController.text == ''
+              ? 0
+              : textEditingController.text);
+    });
+
+    if (tCount < cCount) {
+      textEditingController.text = '';
+    }
+
+    _increaseBottleCount = (tCount - (tCount >= cCount ? cCount : 0));
+    debugPrint('++++++++++++++++++++++++++++++++++++++incdreasedBottleCount');
+    debugPrint('$_increaseBottleCount');
   }
 
   @override
@@ -93,43 +133,50 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
     _index = widget.routeArgument.index;
     _otp = widget.routeArgument.otp;
     _fromScreen = widget.routeArgument.fromScreen;
-   // debugPrint("_orderstatus.......... " + _orderstatus.toString());
+    _customerNo = widget.routeArgument.customerNo;
+    // debugPrint("_orderstatus.......... " + _orderstatus.toString());
     _ReceiverText = TextEditingController();
     Future.delayed(Duration.zero, () async {
-     await Provider.of<OrdersItemsList>(context,listen:false).Login();
-      await  Provider.of<OrdersItemsList>(context,listen:false).GetRestaurant().then((value) {
-        currency_format= PrefUtils.prefs.getString("currency_format");
-        debugPrint("dxfcgvbhjn....."+currency_format);
+      await Provider.of<OrdersItemsList>(context, listen: false).Login();
+      await Provider.of<OrdersItemsList>(context, listen: false)
+          .GetRestaurant()
+          .then((value) {
+        currency_format = PrefUtils.prefs.getString("currency_format");
+        debugPrint("dxfcgvbhjn....." + currency_format);
+      });
 
-      } );
-
-      Provider.of<OrdersItemsList>(context,listen:false).GetItems(_orderid).then((
-          _) async {
+      Provider.of<OrdersItemsList>(context, listen: false)
+          .GetItems(_orderid)
+          .then((_) async {
         setState(() {
           _isloading = false;
-          ordersData = Provider.of<OrdersItemsList>(context,listen:false);
+          ordersData = Provider.of<OrdersItemsList>(context, listen: false);
           itemcount = ordersData.orderitems.length.toString();
 
           _mobile = ordersData.orderitems[0].mobile;
           _latitude = double.parse(ordersData.orderitems[0].latitude);
           _longitude = double.parse(ordersData.orderitems[0].longitude);
-          _orderstatus = ordersData.orderitems[0].orderstatus.toString().toLowerCase();
+          _orderstatus =
+              ordersData.orderitems[0].orderstatus.toString().toLowerCase();
           _paymenttype = ordersData.orderitems[0].payment_type;
           _orderamount = ordersData.orderitems[0].order_amount;
           _fixdate = ordersData.orderitems[0].fix_date;
           _fixtime = ordersData.orderitems[0].fix_time;
           _customername = ordersData.orderitems[0].customer_name;
+          _customerNo = ordersData.orderitems[0].customerNo;
+          totalBottlesCount = ordersData.orderitems[0].totalBottles; //'10'; //
           _address = ordersData.orderitems[0].address;
           _actualamount = ordersData.orderitems[0].actual_amount;
           _deliverycharge = ordersData.orderitems[0].delivery_charge;
           _index = widget.routeArgument.index;
           _otp = ordersData.orderitems[0].otp;
-          debugPrint("status...."+_orderstatus.toString());
-
+          debugPrint("status...." + _orderstatus.toString());
         });
       });
-      if(_fromScreen=="pushNotification") {
-        Provider.of<OrdersItemsList>(context, listen: false).GetOrders("0").then((_) {
+      if (_fromScreen == "pushNotification") {
+        Provider.of<OrdersItemsList>(context, listen: false)
+            .GetOrders("0")
+            .then((_) {
           setState(() {
             ordersData = Provider.of<OrdersItemsList>(context, listen: false);
             for (int i = 0; i < ordersData.items.length; i++) {
@@ -140,28 +187,43 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
           });
         });
       }
-     // only create the future once.
+      // only create the future once.
     });
 
     super.initState();
   }
 
+  // getTotalBottlesCount() async{
+  //   String url = IConstants.API_PATH + 'get-del-data-by-block';
+  //   try{
+  //     final response = await http.post(url);
+  //     final responseJson = json.decode(response.body);
+  //     if (responseJson.toString() == "[]") {
+  //     } else {
+  //       totalBottleCount = responseJson["totalBottleCount"] ;
+  //     }
+  //
+  //   }catch(e){
+  //     throw e;
+  //   }
+  // }
+
   void showmodalbottoms(i) {
-    _groupValue = /*ordersData.orderitems[i].indexvalue*/0;
+    _groupValue = /*ordersData.orderitems[i].indexvalue*/ 0;
     print('details');
 
     showModalBottomSheet(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.only(topRight:Radius.circular(20.0),topLeft: Radius.circular(20.0)),
+          borderRadius: BorderRadius.only(
+              topRight: Radius.circular(20.0), topLeft: Radius.circular(20.0)),
         ),
         context: context,
         isScrollControlled: true,
         builder: (BuildContext context) {
-      return StatefulBuilder(
-          builder: (context, setState) {
+          return StatefulBuilder(builder: (context, setState) {
             return SingleChildScrollView(
               child: Padding(
-                  padding: MediaQuery.of(context).viewInsets,
+                padding: MediaQuery.of(context).viewInsets,
                 child: Container(
                   padding: EdgeInsets.symmetric(horizontal: 15, vertical: 10),
                   child: Column(
@@ -173,10 +235,16 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                         height: 10,
                       ),
                       // VerticalDivider(),
-                      Text('Issue', style: TextStyle(fontSize: 14,
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold),),
-                      SizedBox(height: 10,),
+                      Text(
+                        'Issue',
+                        style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(
+                        height: 10,
+                      ),
                       Column(
                         mainAxisAlignment: MainAxisAlignment.start,
                         children: [
@@ -188,38 +256,32 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                             },
                             child: Row(
                               children: [
-                                _groupValue == 0 ?
-                                Container(
-                                  width: 20.0,
-                                  height: 20.0,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    border: Border.all(
-                                      color: Theme
-                                          .of(context)
-                                          .accentColor,
-                                    ),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Container(
-                                    margin: EdgeInsets.all(1.5),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(Icons.check,
-                                        color: Theme
-                                            .of(context)
-                                            .accentColor,
-                                        size: 15.0),
-                                  ),
-                                )
-                                    :
-                                Icon(
-                                    Icons.radio_button_off_outlined,
-                                    color: Theme
-                                        .of(context)
-                                        .accentColor),
+                                _groupValue == 0
+                                    ? Container(
+                                        width: 20.0,
+                                        height: 20.0,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          border: Border.all(
+                                            color:
+                                                Theme.of(context).accentColor,
+                                          ),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Container(
+                                          margin: EdgeInsets.all(1.5),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(Icons.check,
+                                              color:
+                                                  Theme.of(context).accentColor,
+                                              size: 15.0),
+                                        ),
+                                      )
+                                    : Icon(Icons.radio_button_off_outlined,
+                                        color: Theme.of(context).accentColor),
 
                                 /*   Radio(
                           value: 0,
@@ -230,12 +292,12 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                                 debugPrint("111"+_groupValue.toString());
                               }),
                         ),*/
-                                SizedBox(width:10,),
+                                SizedBox(
+                                  width: 10,
+                                ),
                                 Container(
-                                  width: MediaQuery
-                                      .of(context)
-                                      .size
-                                      .width / 1 - 60,
+                                  width: MediaQuery.of(context).size.width / 1 -
+                                      60,
                                   //padding: EdgeInsets.symmetric(horizontal: 10),
                                   color: Colors.white,
                                   child: Form(
@@ -250,36 +312,40 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                                       ),
                                       decoration: InputDecoration(
                                         hintText: ' Describe the Issue',
-                                        hintStyle: TextStyle(fontSize: 14,color: Colors.grey),
+                                        hintStyle: TextStyle(
+                                            fontSize: 14, color: Colors.grey),
                                         contentPadding: EdgeInsets.all(2),
                                         fillColor: Colors.green,
                                         enabledBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(6),
-                                          borderSide: BorderSide(
-                                              color: Colors.grey),
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                          borderSide:
+                                              BorderSide(color: Colors.grey),
                                         ),
                                         errorBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(6),
-                                          borderSide: BorderSide(
-                                              color: Colors.green),
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                          borderSide:
+                                              BorderSide(color: Colors.green),
                                         ),
                                         focusedErrorBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(6),
-                                          borderSide: BorderSide(
-                                              color: Colors.green),
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                          borderSide:
+                                              BorderSide(color: Colors.green),
                                         ),
                                         focusedBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(6),
-                                          borderSide:
-                                          BorderSide(
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                          borderSide: BorderSide(
                                               color: Colors.green, width: 1.2),
                                         ),
                                       ),
-                                     onTap: (){
-                                        setState((){
-                                          _groupValue=0;
+                                      onTap: () {
+                                        setState(() {
+                                          _groupValue = 0;
                                         });
-                                     },
+                                      },
                                       /*decoration: InputDecoration(
                                       hintText: "Receiver’s Name*",
                                       contentPadding: EdgeInsets.all(5),
@@ -306,7 +372,9 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                                 debugPrint("111"+_groupValue.toString());
                               }),
                         ),*/
-                          SizedBox(height: 5,),
+                          SizedBox(
+                            height: 5,
+                          ),
                           GestureDetector(
                             onTap: () {
                               setState(() {
@@ -315,39 +383,35 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                             },
                             child: Row(
                               children: [
-                                _groupValue == 1 ?
-                                Container(
-                                  width: 20.0,
-                                  height: 20.0,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    border: Border.all(
-                                      color: Theme
-                                          .of(context)
-                                          .accentColor,
-                                    ),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Container(
-                                    margin: EdgeInsets.all(1.5),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(Icons.check,
-                                        color: Theme
-                                            .of(context)
-                                            .accentColor,
-                                        size: 15.0),
-                                  ),
-                                )
-                                    :
-                                Icon(
-                                    Icons.radio_button_off_outlined,
-                                    color: Theme
-                                        .of(context)
-                                        .accentColor),
-                                SizedBox(width : 10,),
+                                _groupValue == 1
+                                    ? Container(
+                                        width: 20.0,
+                                        height: 20.0,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          border: Border.all(
+                                            color:
+                                                Theme.of(context).accentColor,
+                                          ),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Container(
+                                          margin: EdgeInsets.all(1.5),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(Icons.check,
+                                              color:
+                                                  Theme.of(context).accentColor,
+                                              size: 15.0),
+                                        ),
+                                      )
+                                    : Icon(Icons.radio_button_off_outlined,
+                                        color: Theme.of(context).accentColor),
+                                SizedBox(
+                                  width: 10,
+                                ),
                                 Container(
                                   height: 60,
                                   decoration: BoxDecoration(
@@ -369,10 +433,16 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                           ),
                         ],
                       ),
-                      SizedBox(height: 10,),
-                      Text('Action Taken', style: TextStyle(fontSize: 14,
-                          color: Colors.grey,
-                          fontWeight: FontWeight.bold),),
+                      SizedBox(
+                        height: 10,
+                      ),
+                      Text(
+                        'Action Taken',
+                        style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey,
+                            fontWeight: FontWeight.bold),
+                      ),
                       Padding(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 4, vertical: 5),
@@ -471,9 +541,9 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                     ),
 
                        */
-                    SizedBox(
-                      height: 10,
-                    ),
+                      SizedBox(
+                        height: 10,
+                      ),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -492,44 +562,40 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                             },
                             child: Column(
                               children: [
-                                _groupValue1 == 0 ?
-                                Container(
-                                  width: 20.0,
-                                  height: 20.0,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    border: Border.all(
-                                      color: Theme
-                                          .of(context)
-                                          .accentColor,
-                                    ),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Container(
-                                    margin: EdgeInsets.all(1.8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(Icons.check,
-                                        color: Theme
-                                            .of(context)
-                                            .accentColor,
-                                        size: 15.0),
-                                  ),
-                                )
-                                    :
-                                Icon(
-                                    Icons.radio_button_off_outlined,
-                                    color: Theme
-                                        .of(context)
-                                        .accentColor),
+                                _groupValue1 == 0
+                                    ? Container(
+                                        width: 20.0,
+                                        height: 20.0,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          border: Border.all(
+                                            color:
+                                                Theme.of(context).accentColor,
+                                          ),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Container(
+                                          margin: EdgeInsets.all(1.8),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(Icons.check,
+                                              color:
+                                                  Theme.of(context).accentColor,
+                                              size: 15.0),
+                                        ),
+                                      )
+                                    : Icon(Icons.radio_button_off_outlined,
+                                        color: Theme.of(context).accentColor),
                               ],
                             ),
                           ),
                         ],
                       ),
-                      SizedBox(height: 10,),
+                      SizedBox(
+                        height: 10,
+                      ),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -548,38 +614,32 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                             },
                             child: Column(
                               children: [
-                                _groupValue1 == 1 ?
-                                Container(
-                                  width: 20.0,
-                                  height: 20.0,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    border: Border.all(
-                                      color: Theme
-                                          .of(context)
-                                          .accentColor,
-                                    ),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Container(
-                                    margin: EdgeInsets.all(1.5),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(Icons.check,
-                                        color: Theme
-                                            .of(context)
-                                            .accentColor,
-                                        size: 15.0),
-                                  ),
-                                )
-                                    :
-                                Icon(
-                                    Icons.radio_button_off_outlined,
-                                    color: Theme
-                                        .of(context)
-                                        .accentColor),
+                                _groupValue1 == 1
+                                    ? Container(
+                                        width: 20.0,
+                                        height: 20.0,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          border: Border.all(
+                                            color:
+                                                Theme.of(context).accentColor,
+                                          ),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Container(
+                                          margin: EdgeInsets.all(1.5),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(Icons.check,
+                                              color:
+                                                  Theme.of(context).accentColor,
+                                              size: 15.0),
+                                        ),
+                                      )
+                                    : Icon(Icons.radio_button_off_outlined,
+                                        color: Theme.of(context).accentColor),
                               ],
                             ),
                           ),
@@ -725,40 +785,36 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                         height: 15,
                       ),
                       SizedBox(
-                        width: MediaQuery
-                            .of(context)
-                            .size
-                            .width - 50,
+                        width: MediaQuery.of(context).size.width - 50,
                         child: FlatButton(
                           onPressed: () {
-                            if(_groupValue==0) {
-                              if (_ReceiverText.text == "" || _ReceiverText.text == "null") {
+                            if (_groupValue == 0) {
+                              if (_ReceiverText.text == "" ||
+                                  _ReceiverText.text == "null") {
                                 Fluttertoast.showToast(
                                     msg: "Please Enter Description",
                                     backgroundColor: Colors.black87,
                                     textColor: Colors.white);
-                              }else{
+                              } else {
                                 _dialogforProcessing();
                                 cancelOrder();
                               }
-                            }else{
-                                _dialogforProcessing();
-                                cancelOrder();
-                              }
+                            } else {
+                              _dialogforProcessing();
+                              cancelOrder();
+                            }
                           },
                           padding: EdgeInsets.symmetric(vertical: 14),
-                          color: Theme
-                              .of(context)
-                              .accentColor,
+                          color: Theme.of(context).accentColor,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(5),
                           ),
                           child: Text(
                             "SAVE",
                             textAlign: TextAlign.start,
-                            style: TextStyle(color: Theme
-                                .of(context)
-                                .primaryColor, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                                color: Theme.of(context).primaryColor,
+                                fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),
@@ -771,8 +827,9 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
               ),
             );
           });
-    });
+        });
   }
+
   Widget _myRadioButton({Column title, int value, Function onChanged, int i}) {
     print(i);
     print('1221122121121');
@@ -785,52 +842,46 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
       if (_groupValue == 1) {
         print('111111111111111111111111111111');
         setState(() {
-        /*  ordersData.orderitems[i].selectedreason = 'Wrong item price';
+          /*  ordersData.orderitems[i].selectedreason = 'Wrong item price';
           print('o..hellooo');
           print('o..hellooo');
           debugPrint(ordersData.orderitems[i].selectedreason);
           print('o..hellooo');*/
         });
         /*prefs.setString("returning_reason", "Wrong item was sent");*/
-      }
-      else if (_groupValue == 2) {
+      } else if (_groupValue == 2) {
         print('11111111111111111111111111222222221');
         setState(() {
-         // ordersData.orderitems[i].selectedreason = 'Out of stock';
-         // debugPrint(ordersData.orderitems[i].selectedreason);
+          // ordersData.orderitems[i].selectedreason = 'Out of stock';
+          // debugPrint(ordersData.orderitems[i].selectedreason);
         });
-      }
-      else if (_groupValue == 0) {
+      } else if (_groupValue == 0) {
         print('111111111111111111111133333333331');
         setState(() {
           //ordersData.orderitems[i].selectedreason = 'No Problem';
-         // debugPrint(ordersData.orderitems[i].selectedreason);
+          // debugPrint(ordersData.orderitems[i].selectedreason);
         });
-      }
-      else if (_groupValue == 3) {
+      } else if (_groupValue == 3) {
         print('11111111111111111444444444444444441111');
         setState(() {
-         // ordersData.orderitems[i].selectedreason = 'Poor Quality';
-         // debugPrint(ordersData.orderitems[i].selectedreason);
+          // ordersData.orderitems[i].selectedreason = 'Poor Quality';
+          // debugPrint(ordersData.orderitems[i].selectedreason);
         });
-      }
-      else if (_groupValue == 4) {
+      } else if (_groupValue == 4) {
         print('111111111111111115555555555555555111111');
         setState(() {
-         // ordersData.orderitems[i].selectedreason = 'Not the Right Size';
-         // debugPrint(ordersData.orderitems[i].selectedreason);
+          // ordersData.orderitems[i].selectedreason = 'Not the Right Size';
+          // debugPrint(ordersData.orderitems[i].selectedreason);
         });
-      }
-      else if (_groupValue == 5) {
+      } else if (_groupValue == 5) {
         print('11111111111111166666666666666611111');
         setState(() {
           //ordersData.orderitems[i].selectedreason = 'Not the Right Quantity';
-         // debugPrint(ordersData.orderitems[i].selectedreason);
+          // debugPrint(ordersData.orderitems[i].selectedreason);
         });
-      }
-      else {
+      } else {
         setState(() {
-        //  ordersData.orderitems[i].selectedreason = 'None of the above';
+          //  ordersData.orderitems[i].selectedreason = 'None of the above';
           debugPrint(ordersData.orderitems[i].selectedreason);
         });
       }
@@ -847,117 +898,158 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
       ),
     );
   }
+
   _dialogforOTP() {
-    return showDialog(context: context,
+    return showDialog(
+        context: context,
         builder: (context) {
-          return StatefulBuilder(
-              builder: (context, setState) {
-                return Dialog(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(3.0)
-                  ),
-                  child: Container(
-                    height: 210.0,
-                    padding: EdgeInsets.all(10.0),
-                    width: MediaQuery.of(context).size.width,
-                    child: Column(
-                      children: <Widget>[
-                        Text('Enter the 4-digit code sent to the customer', style: TextStyle(fontSize: 14.0, fontWeight: FontWeight.bold),),
-                        SizedBox(height: 20.0,),
-                        Center(
-                          child: PinCodeTextField(
-                            controller: _controller,
-                            highlight: true,
-                            highlightColor: Color(0xff00BD6D),
-                            defaultBorderColor: Colors.grey,
-                            hasTextBorderColor: Colors.grey,
-                            maxLength: 4,
-                            pinBoxWidth: 55.0,
-                            pinBoxHeight: 55.0,
-                            onTextChanged: (text) {
-                              setState(() {
-                                //hasError = false;
-                              });
-                            },
-                            onDone: (text){
-                              setState(() {
-                                otpvalue = text;
-                              });
-                              print("DONE $text");
-                            },
-                            wrapAlignment: WrapAlignment.spaceAround,
-                          ),
-                        ),
-                        SizedBox(height: 20.0,),
-                        FlatButton(
-                          onPressed: () {
-                            if(otpvalue.length == 4) {
-                              debugPrint("otp ----" + _otp.toString());
-                              debugPrint("otp ----" + otpvalue.toString());
-                              debugPrint("ordersData.orderitems[0].otp . . . .. " + ordersData.orderitems[0].otp);
-                              /*if(_otp == otpvalue) {*/
-                              if(ordersData.orderitems[0].otp == otpvalue) {
-                                Navigator.of(context).pop();
-                                _dialogforDelivered(context);
-                                performDelivered();
-                              } else {
-                                Fluttertoast.showToast(msg: "Please enter a valid otp", backgroundColor: Colors.black87, textColor: Colors.white);
-                              }
-                            } else {
-                              Fluttertoast.showToast(msg: "Please enter a valid otp", backgroundColor: Colors.black87, textColor: Colors.white);
-                            }
-                          },
-                          child: Text(
-                            "Confirm",
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.white,
-                            ),
-                          ),
-                          color: Color(0xff00BD6D),
-                        ),
-                      ],
+          return StatefulBuilder(builder: (context, setState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(3.0)),
+              child: Container(
+                height: 210.0,
+                padding: EdgeInsets.all(10.0),
+                width: MediaQuery.of(context).size.width,
+                child: Column(
+                  children: <Widget>[
+                    Text(
+                      'Enter the 4-digit code sent to the customer',
+                      style: TextStyle(
+                          fontSize: 14.0, fontWeight: FontWeight.bold),
                     ),
-                  ),
-                );
-              }
-          );
-        });
-  }
-  _dialogforDelivered(BuildContext context) {
-    return showDialog(context: context,
-        builder: (context) {
-          return StatefulBuilder(
-              builder: (context, setState) {
-                return Dialog(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(3.0)
-                  ),
-                  child: Container(
-                      height: 100.0,
-                      child:
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: <Widget>[
-                          CircularProgressIndicator(),
-                          SizedBox(width: 40.0,),
-                          Text('Processing...'),
-                        ],
-                      )
-                  ),
-                );
-              }
-          );
+                    SizedBox(
+                      height: 20.0,
+                    ),
+                    Center(
+                      child: PinCodeTextField(
+                        controller: _controller,
+                        highlight: true,
+                        highlightColor: Color(0xff00BD6D),
+                        defaultBorderColor: Colors.grey,
+                        hasTextBorderColor: Colors.grey,
+                        maxLength: 4,
+                        pinBoxWidth: 55.0,
+                        pinBoxHeight: 55.0,
+                        onTextChanged: (text) {
+                          setState(() {
+                            //hasError = false;
+                          });
+                        },
+                        onDone: (text) {
+                          setState(() {
+                            otpvalue = text;
+                          });
+                          print("DONE $text");
+                        },
+                        wrapAlignment: WrapAlignment.spaceAround,
+                      ),
+                    ),
+                    SizedBox(
+                      height: 20.0,
+                    ),
+                    FlatButton(
+                      onPressed: () {
+                        if (otpvalue.length == 4) {
+                          debugPrint("otp ----" + _otp.toString());
+                          debugPrint("otp ----" + otpvalue.toString());
+                          debugPrint("ordersData.orderitems[0].otp . . . .. " +
+                              ordersData.orderitems[0].otp);
+                          /*if(_otp == otpvalue) {*/
+                          if (ordersData.orderitems[0].otp == otpvalue) {
+                            Navigator.of(context).pop();
+                            _dialogforDelivered(context);
+                            performDelivered();
+                          } else {
+                            Fluttertoast.showToast(
+                                msg: "Please enter a valid otp",
+                                backgroundColor: Colors.black87,
+                                textColor: Colors.white);
+                          }
+                        } else {
+                          Fluttertoast.showToast(
+                              msg: "Please enter a valid otp",
+                              backgroundColor: Colors.black87,
+                              textColor: Colors.white);
+                        }
+                      },
+                      child: Text(
+                        "Confirm",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white,
+                        ),
+                      ),
+                      color: Color(0xff00BD6D),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          });
         });
   }
 
-  performDelivered() {
-    Provider.of<OrdersItemsList>(context,listen:false).DeliveredItems(_orderid, _mobile).then((
-        _) async {
+  _dialogforDelivered(BuildContext context) {
+    return showDialog(
+        context: context,
+        builder: (context) {
+          return StatefulBuilder(builder: (context, setState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(3.0)),
+              child: Container(
+                  height: 100.0,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      CircularProgressIndicator(),
+                      SizedBox(
+                        width: 40.0,
+                      ),
+                      Text('Processing...'),
+                    ],
+                  )),
+            );
+          });
+        });
+  }
+
+  performDelivered() async {
+    print('(bottles.isNotEmpty && (int.parse(bottles) > 0))--------------');
+    print(receivedBottle);
+    print('${receivedBottle > 0}');
+    if (receivedBottle > 0) {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await PrefUtils.init();
+
+      String url = IConstants.API_PATH + 'update-bottle';
+      try {
+        final response = await http.post(url, body: {
+          'customer_id': _customerNo,
+          'recived_bottle': receivedBottle.toString(),
+          'delivery_boy_id': prefs.get("id")
+        });
+        print('++++++++++++');
+        print(_customerNo);
+        print(receivedBottle);
+        print(prefs.get("id"));
+        final responseJson = json.decode(response.body);
+        if (responseJson.toString() == "[]") {
+        } else {
+          Provider.of<Bottles>(context, listen: false).getCollectedBottles();
+        }
+      } catch (e) {
+        throw e;
+      }
+    }
+    Provider.of<OrdersItemsList>(context, listen: false)
+        .DeliveredItems(_orderid, _mobile)
+        .then((_) async {
       setState(() {
-        for(int i = 0; i < ordersData.items.length; i++){
-          if(i == _index) {
+        for (int i = 0; i < ordersData.items.length; i++) {
+          if (i == _index) {
             ordersData.items[i].orderstatus = "delivered";
           }
         }
@@ -966,64 +1058,71 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
         _con.scaffoldKey.currentState.showSnackBar(SnackBar(
           content: Text("Delivered Successfully"),
         ));
-       // Navigator.of(context).pushNamed('/Pages', arguments: 1);
+        // Navigator.of(context).pushNamed('/Pages', arguments: 1);
         print("Done............");
       });
     });
   }
 
   _dialogforProcessing() {
-    return showDialog(context: context,
+    return showDialog(
+        context: context,
         builder: (context) {
-          return StatefulBuilder(
-              builder: (context, setState) {
-                return AbsorbPointer(
-                  child: Container(
-                    color: Colors.transparent,
-                    height: double.infinity,
-                    width: double.infinity,
-                    alignment: Alignment.center,
-                    child: CircularProgressIndicator(color: Theme.of(context).accentColor,),
-                  ),
-                );
-              }
-          );
+          return StatefulBuilder(builder: (context, setState) {
+            return AbsorbPointer(
+              child: Container(
+                color: Colors.transparent,
+                height: double.infinity,
+                width: double.infinity,
+                alignment: Alignment.center,
+                child: CircularProgressIndicator(
+                  color: Theme.of(context).accentColor,
+                ),
+              ),
+            );
+          });
         });
   }
 
-  Future<void> acceptOrder() async { // imp feature in adding async is the it automatically wrap into Future.
+  Future<void> acceptOrder() async {
+    // imp feature in adding async is the it automatically wrap into Future.
     var url = IConstants.API_PATH + 'restaurant/delivery-boy-status';
     try {
-      final response = await http
-          .post(
-          url,
-          body: { // await keyword is used to wait to this operation is complete.
-            "id": _orderid,
-            "status": "1",
-            "mobile": _mobile,
-          }
-      );
+      final response = await http.post(url, body: {
+        // await keyword is used to wait to this operation is complete.
+        "id": _orderid,
+        "status": "1",
+        "mobile": _mobile,
+      });
       final responseJson = json.decode(response.body);
       debugPrint(responseJson.toString());
-      if(responseJson['status'].toString() == "200") {
-        Fluttertoast.showToast(msg: "Accepted successfully!", backgroundColor: Colors.black87, textColor: Colors.white);
+      if (responseJson['status'].toString() == "200") {
+        Fluttertoast.showToast(
+            msg: "Accepted successfully!",
+            backgroundColor: Colors.black87,
+            textColor: Colors.white);
         setState(() {
-          for(int i = 0; i < ordersData.items.length; i++){
-            if(i == _index) {
+          for (int i = 0; i < ordersData.items.length; i++) {
+            if (i == _index) {
               ordersData.items[i].orderstatus = "onway";
             }
           }
           _orderstatus = "onway";
         });
         Navigator.of(context).pop();
-
       } else {
         _isCheckbox = !_isCheckbox;
-        Fluttertoast.showToast(msg: "Something went wrong!", backgroundColor: Colors.black87, textColor: Colors.white);
+        Fluttertoast.showToast(
+            msg: "Something went wrong!",
+            backgroundColor: Colors.black87,
+            textColor: Colors.white);
       }
     } catch (error) {
       _isCheckbox = !_isCheckbox;
-      Fluttertoast.showToast(msg: "Something went wrong!", backgroundColor: Colors.black87, textColor: Colors.white);
+      Fluttertoast.showToast(
+          msg: "Something went wrong!",
+          backgroundColor: Colors.black87,
+          textColor: Colors.white);
       print(error);
       throw error;
     }
@@ -1032,20 +1131,20 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
   Future<void> cancelOrder() async {
     // imp feature in adding async is the it automatically wrap into Future.
     var url = IConstants.API_PATH + 'restaurant/delivery-boy-status';
-     if(_groupValue1==0){
-        mode='5';
-     }else{
-         mode='6';
-     }
-     if(_groupValue==0){
-
-     }
+    if (_groupValue1 == 0) {
+      mode = '5';
+    } else {
+      mode = '6';
+    }
+    if (_groupValue == 0) {}
     try {
       final response = await http.post(url, body: {
         // await keyword is used to wait to this operation is complete.
         "id": _orderid,
-        "slotReason": _groupValue==0?_ReceiverText.text:"customer not available",/*_message.text*/
-        'status':/*'5'*/_groupValue1==0?"5":"6",
+        "slotReason":
+            _groupValue == 0 ? _ReceiverText.text : "customer not available",
+        /*_message.text*/
+        'status': /*'5'*/ _groupValue1 == 0 ? "5" : "6",
       });
       final responseJson = json.decode(response.body);
       debugPrint(responseJson.toString());
@@ -1053,7 +1152,6 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
       Navigator.pop(context);
       if (responseJson['status'].toString() == "200") {
         Navigator.of(context).pushNamed('/Pages', arguments: 1);
-
       } else {
         return Fluttertoast.showToast(msg: "Something went wrong!!!");
       }
@@ -1067,13 +1165,15 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
 
   static Future<void> openMap(double latitude, double longitude) async {
     print("Latitude............" + latitude.toString());
-    String googleUrl = 'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude';
-   // if (await canLaunch(googleUrl)) {
+    String googleUrl =
+        'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude';
+    if (await canLaunch(googleUrl)) {
       await launch(googleUrl);
-    // } else {
-    //   throw 'Could not open the map.';
-    // }
+    } else {
+      throw 'Could not open the map.';
+    }
   }
+
   _dialogforCancel(BuildContext context) {
     return showDialog(
         context: context,
@@ -1081,12 +1181,12 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
           return StatefulBuilder(builder: (context, setState) {
             return Dialog(
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(3.0),
+                borderRadius: BorderRadius.circular(3.0),
               ),
-               child: Container(
+              child: Container(
                   width: MediaQuery.of(context).size.width,
                   height: 250.0,
-                   padding: EdgeInsets.only(left: 10.0, right: 10.0),
+                  padding: EdgeInsets.only(left: 10.0, right: 10.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1094,13 +1194,13 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                       SizedBox(
                         height: 9.0,
                       ),
-                  Text(
-                                          "Order ID: " + _orderid,
-                                          style: TextStyle(
-                                              color: Colors.black,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 18.0),
-                                        ),
+                      Text(
+                        "Order ID: " + _orderid,
+                        style: TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18.0),
+                      ),
                       SizedBox(
                         height: 10.0,
                       ),
@@ -1108,7 +1208,9 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                         controller: _message,
                         decoration: InputDecoration(
                           //hintText: "Reasons",
-                          labelText: 'Please describe the issue ',labelStyle: TextStyle(fontSize: 12,color: Colors.grey),
+                          labelText: 'Please describe the issue ',
+                          labelStyle:
+                              TextStyle(fontSize: 12, color: Colors.grey),
                           contentPadding: EdgeInsets.all(16),
                           border: OutlineInputBorder(),
                         ),
@@ -1133,12 +1235,12 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                         color: Theme.of(context).primaryColor,
                       ),
                     ],
-                   )
-            ),
+                  )),
             );
-           });
+          });
         });
   }
+
   // _dialogforCancel(BuildContext context) {
   //   return showDialog(
   //       context: context,
@@ -1201,63 +1303,89 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
   //         });
   //       });
   // }
+  // getBottleCount() {
+  //   int tCount = increased ? increaseBottleCount : int.parse(totalBottlesCount);
+  //   int cCount = int.parse(
+  //       (textEditingController.text == '' ? '0' : textEditingController.text));
+  //
+  //   if (tCount < cCount) {
+  //     textEditingController.text = '';
+  //   }
+  //
+  //   increaseBottleCount = (tCount - (tCount >= cCount ? cCount : 0));
+  //   debugPrint('++++++++++++++++++++++++++++++++++++++incdreasedBottleCount');
+  //   debugPrint('$increaseBottleCount');
+  //   return increaseBottleCount;
+  // }
+
   @override
   Widget build(BuildContext context) {
-    final ordersData = Provider.of<OrdersItemsList>(context,listen:false);
-
-
-
+    final ordersData = Provider.of<OrdersItemsList>(context, listen: false);
 
     return Scaffold(
-        key: _con.scaffoldKey,
-        drawer: DrawerWidget(),
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          leading: new IconButton(
-            icon: new Icon(Icons.arrow_back_ios, color: /*Theme.of(context).hintColor*/Colors.white),
-            onPressed: () => /*_con.scaffoldKey.currentState.openDrawer()*/Navigator.of(context).pop(),
-          ),
-          automaticallyImplyLeading: false,
-          backgroundColor: /*Colors.transparent*/Theme.of(context).accentColor,
-          elevation: 0,
-          centerTitle: true,
-          title: Text(
-            S.of(context).order_details,
-            style: Theme.of(context).textTheme.subtitle2.merge(TextStyle(letterSpacing: 1.3,color: Colors.white)),
-          ),
-          actions: <Widget>[
-            new ShoppingCartButtonWidget(
-                iconColor: Theme.of(context).hintColor, labelColor: Theme.of(context).accentColor),
-          ],
+      key: _con.scaffoldKey,
+      drawer: DrawerWidget(),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        leading: new IconButton(
+          icon: new Icon(Icons.arrow_back_ios,
+              color: /*Theme.of(context).hintColor*/ Colors.white),
+          onPressed:
+              () => /*_con.scaffoldKey.currentState.openDrawer()*/ Navigator
+                      .of(context)
+                  .pop(),
         ),
-        body: _isloading
-            ? CircularLoadingWidget(height: 500,)
-            : Stack(
-                fit: StackFit.expand,
-                children: <Widget>[
-                  Container(
-                   // margin: EdgeInsets.only(bottom: _orderstatus == 'delivered' ? 147 : 230),
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: <Widget>[
-                          SizedBox(height: 10,),
-                          Container(
-                            margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-                            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                              boxShadow: [
-                                BoxShadow(
-                                    color: Colors.grey[400],
-                                    blurRadius: 5,
-                                    offset: Offset(0, 5)),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: <Widget>[
-                               /* _orderstatus == 'delivered'
+        automaticallyImplyLeading: false,
+        backgroundColor: /*Colors.transparent*/ Theme.of(context).accentColor,
+        elevation: 0,
+        centerTitle: true,
+        title: Text(
+          S.of(context).order_details,
+          style: Theme.of(context)
+              .textTheme
+              .subtitle2
+              .merge(TextStyle(letterSpacing: 1.3, color: Colors.white)),
+        ),
+        actions: <Widget>[
+          new ShoppingCartButtonWidget(
+              iconColor: Theme.of(context).hintColor,
+              labelColor: Theme.of(context).accentColor),
+        ],
+      ),
+      body: _isloading
+          ? CircularLoadingWidget(
+              height: 500,
+            )
+          : Stack(
+              fit: StackFit.expand,
+              children: <Widget>[
+                Container(
+                  // margin: EdgeInsets.only(bottom: _orderstatus == 'delivered' ? 147 : 230),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: <Widget>[
+                        SizedBox(
+                          height: 10,
+                        ),
+                        Container(
+                          margin:
+                              EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                  color: Colors.grey[400],
+                                  blurRadius: 5,
+                                  offset: Offset(0, 5)),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: <Widget>[
+                              /* _orderstatus == 'delivered'
                                     ? Container(
                                         width: 60,
                                         height: 60,
@@ -1281,55 +1409,78 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                                           size: 30,
                                         ),
                                       ),*/
-                                SizedBox(width: 15),
-                                Flexible(
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                    children: <Widget>[
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: <Widget>[
-                                            Text(
-                                              S.of(context).order_id +" "+"#${_orderid}",
-                                              overflow: TextOverflow.ellipsis,
-                                              maxLines: 2,
-                                              style: TextStyle(color: Theme.of(context).accentColor,fontSize: 18.0, fontWeight: FontWeight.w600,),
-                                            ),
-                                            Text(
-                                              _paymenttype,
-                                              overflow: TextOverflow.ellipsis,
-                                              maxLines: 2,
-                                              style: TextStyle(color: Colors.black,fontSize: 18.0, fontWeight: FontWeight.w600,),
-                                            ),
-                                            Text(
-                                              /*_fixdate + " " +*/ _fixtime,
-                                              style: Theme.of(context).textTheme.caption,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      SizedBox(width: 8),
-                                      Column(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        crossAxisAlignment: CrossAxisAlignment.end,
+                              SizedBox(width: 15),
+                              Flexible(
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: <Widget>[
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: <Widget>[
-                                          //Helper.getPrice(double.parse(_orderamount), style: Theme.of(context).textTheme.display1),
-                                          Text(currency_format + _orderamount, style: Theme.of(context).textTheme.headline4),
-                                          SizedBox(height: 5,),
                                           Text(
-                                            'Items: ' + itemcount,
-                                            style: Theme.of(context).textTheme.caption,
+                                            S.of(context).order_id +
+                                                " " +
+                                                "#${_orderid}",
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 2,
+                                            style: TextStyle(
+                                              color:
+                                                  Theme.of(context).accentColor,
+                                              fontSize: 18.0,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          Text(
+                                            _paymenttype,
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 2,
+                                            style: TextStyle(
+                                              color: Colors.black,
+                                              fontSize: 18.0,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          Text(
+                                            /*_fixdate + " " +*/ _fixtime,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .caption,
                                           ),
                                         ],
                                       ),
-                                    ],
-                                  ),
-                                )
-                              ],
-                            ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: <Widget>[
+                                        //Helper.getPrice(double.parse(_orderamount), style: Theme.of(context).textTheme.display1),
+                                        Text(currency_format + _orderamount,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .headline4),
+                                        SizedBox(
+                                          height: 5,
+                                        ),
+                                        Text(
+                                          'Items: ' + itemcount,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .caption,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              )
+                            ],
                           ),
-                         /* Padding(
+                        ),
+                        /* Padding(
                             padding: const EdgeInsets.only(left: 20, right: 10),
                             child: ListTile(
                               contentPadding: EdgeInsets.symmetric(vertical: 0),
@@ -1345,28 +1496,34 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                               ),
                             ),
                           ),*/
-                          Container(
-                            margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(5),
-                              border: Border.all(color: Colors.grey[300]),
-                            ),
-                            child: Column(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                    children: <Widget>[
-                                      Expanded(
-                                        child: Text(
-                                          _customername,
-                                          style: TextStyle(color: Colors.black,fontSize: 16.0, fontWeight: FontWeight.w600,),
+                        Container(
+                          margin:
+                              EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(5),
+                            border: Border.all(color: Colors.grey[300]),
+                          ),
+                          child: Column(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 20, vertical: 10),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: <Widget>[
+                                    Expanded(
+                                      child: Text(
+                                        _customername,
+                                        style: TextStyle(
+                                          color: Colors.black,
+                                          fontSize: 16.0,
+                                          fontWeight: FontWeight.w600,
                                         ),
                                       ),
-                                      SizedBox(width: 20),
-                                     /* SizedBox(
+                                    ),
+                                    SizedBox(width: 20),
+                                    /* SizedBox(
                                         width: 42,
                                         height: 42,
                                         child: FlatButton(
@@ -1385,89 +1542,102 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                                           shape: StadiumBorder(),
                                         ),
                                       ),*/
-                                    ],
-                                  ),
+                                  ],
                                 ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                    children: <Widget>[
-                                      Expanded(
-                                        child: Text(
-                                          _address,
-                                          style: Theme.of(context).textTheme.bodyText2,
-                                        ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 20, vertical: 5),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: <Widget>[
+                                    Expanded(
+                                      child: Text(
+                                        _address,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyText2,
                                       ),
-                                      SizedBox(width: 20),
-                                      SizedBox(
-                                        width: 42,
-                                        height: 42,
-                                        child: FlatButton(
-                                          padding: EdgeInsets.all(0),
-                                          disabledColor: Theme.of(context).focusColor.withOpacity(0.4),
-                                          onPressed: () {
-                                            /*Navigator.of(context).pushNamed('/Map',
+                                    ),
+                                    SizedBox(width: 20),
+                                    SizedBox(
+                                      width: 42,
+                                      height: 42,
+                                      child: FlatButton(
+                                        padding: EdgeInsets.all(0),
+                                        disabledColor: Theme.of(context)
+                                            .focusColor
+                                            .withOpacity(0.4),
+                                        onPressed: () {
+                                          /*Navigator.of(context).pushNamed('/Map',
                                           arguments: new RouteArgument(param: _address));*/
-                                            openMap(_latitude, _longitude);
-                                          },
-                                          child: /*Icon(
+                                          openMap(_latitude, _longitude);
+                                        },
+                                        child: /*Icon(
                                             Icons.directions,
                                             color: Theme.of(context).primaryColor,
                                             size: 24,
                                           ),*/
-                                          Image.asset( "assets/img/direction.png",
-                                            color: Theme.of(context).accentColor,
-                                            width: 22,
-                                            height:22,
-                                            //fit: BoxFit.fill,
-                                          ),
-                                          color: /*Theme.of(context).accentColor.withOpacity(0.9)*/Colors.white,
-                                          shape: StadiumBorder(),
+                                            Image.asset(
+                                          "assets/img/direction.png",
+                                          color: Theme.of(context).accentColor,
+                                          width: 22,
+                                          height: 22,
+                                          //fit: BoxFit.fill,
                                         ),
+                                        color: /*Theme.of(context).accentColor.withOpacity(0.9)*/ Colors
+                                            .white,
+                                        shape: StadiumBorder(),
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                    children: <Widget>[
-                                      Expanded(
-                                        child: Text(
-                                          _mobile,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: Theme.of(context).textTheme.bodyText2,
-                                        ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 20, vertical: 5),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: <Widget>[
+                                    Expanded(
+                                      child: Text(
+                                        _mobile,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyText2,
                                       ),
-                                      SizedBox(width: 10),
-                                      SizedBox(
-                                        width: 42,
-                                        height: 42,
-                                        child: FlatButton(
-                                          padding: EdgeInsets.all(0),
-                                          onPressed: () {
-                                            launch("tel: " + _mobile);
-                                          },
-                                          child:   Image.asset( "assets/img/call.png",
-                                            width: 22,
-                                            height:22,
-                                            //fit: BoxFit.fill,
-                                          ),
-                                          color: /*Theme.of(context).accentColor.withOpacity(0.9)*/Colors.white,
-                                          shape: StadiumBorder(),
+                                    ),
+                                    SizedBox(width: 10),
+                                    SizedBox(
+                                      width: 42,
+                                      height: 42,
+                                      child: FlatButton(
+                                        padding: EdgeInsets.all(0),
+                                        onPressed: () {
+                                          launch("tel: " + _mobile);
+                                        },
+                                        child: Image.asset(
+                                          "assets/img/call.png",
+                                          width: 22,
+                                          height: 22,
+                                          //fit: BoxFit.fill,
                                         ),
+                                        color: /*Theme.of(context).accentColor.withOpacity(0.9)*/ Colors
+                                            .white,
+                                        shape: StadiumBorder(),
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                          Padding(
-                            padding: const EdgeInsets.only(left: 20, right: 10,top:5),
-                            child: /*ListTile(
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(
+                              left: 20, right: 10, top: 5),
+                          child: /*ListTile(
                               contentPadding: EdgeInsets.symmetric(vertical: 0),
                               leading: Icon(
                                 Icons.fastfood,
@@ -1480,55 +1650,68 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                                 style: Theme.of(context).textTheme.display1,
                               ),
                             ),*/
-                            Row(
-                              children: [
-                               /* Icon(
+                              Row(
+                            children: [
+                              /* Icon(
                                   Icons.fastfood,
                                   color: Theme.of(context).hintColor,
                                 ),*/
-                                Image.asset( "assets/img/order.png",
-                                  width: 22,
-                                  height:22,
-                                  //fit: BoxFit.fill,
-                                ),
-                                SizedBox(width: 10,),
-                                Text(
-                                  S.of(context).grocery_ordered,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.headline4,
-                                ),
-                              ],
-                            ),
+                              Image.asset(
+                                "assets/img/order.png",
+                                width: 22,
+                                height: 22,
+                                //fit: BoxFit.fill,
+                              ),
+                              SizedBox(
+                                width: 10,
+                              ),
+                              Text(
+                                S.of(context).grocery_ordered,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.headline4,
+                              ),
+                            ],
                           ),
-                          SizedBox(height: 10,),
-                          ListView.separated(
-                            padding: EdgeInsets.only(bottom: 10,left: 20,right: 20),
-                            scrollDirection: Axis.vertical,
-                            shrinkWrap: true,
-                            primary: false,
-                            itemCount: ordersData.orderitems.length,
-                            separatorBuilder: (context, index) {
-                              return SizedBox(height: 15);
-                            },
-                            itemBuilder: (context, index) {
-                              return OrderItemWidget(
-                                 imageurl: ordersData.orderitems[index].imageurl,
-                                  itemname: ordersData.orderitems[index].itemname,
-                                  itemvar: ordersData.orderitems[index].itemvar,
-                                  itemqty: ordersData.orderitems[index].itemqty,
-                                  itemamount: ordersData.orderitems[index].itemamount,
-                                  itemorderdate: ordersData.orderitems[index].itemorderdate,
-                                  itemTax: ordersData.orderitems[index].tax,
-                                  //order: _con.order,
-                                  );
-                            },
-                          ),
-                          SizedBox(height:10),
-                          Container(
-                            height: _orderstatus == 'delivered' ? 150 : 150, //177:230
-                            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-                            /*decoration: BoxDecoration(
+                        ),
+                        SizedBox(
+                          height: 10,
+                        ),
+                        ListView.separated(
+                          padding:
+                              EdgeInsets.only(bottom: 10, left: 20, right: 20),
+                          scrollDirection: Axis.vertical,
+                          shrinkWrap: true,
+                          primary: false,
+                          itemCount: ordersData.orderitems.length,
+                          separatorBuilder: (context, index) {
+                            return SizedBox(height: 15);
+                          },
+                          itemBuilder: (context, index) {
+                            return OrderItemWidget(
+                              imageurl: ordersData.orderitems[index].imageurl,
+                              itemname: ordersData.orderitems[index].itemname,
+                              itemvar: ordersData.orderitems[index].itemvar,
+                              itemqty: ordersData.orderitems[index].itemqty,
+                              itemamount:
+                                  ordersData.orderitems[index].itemamount,
+                              itemorderdate:
+                                  ordersData.orderitems[index].itemorderdate,
+                              itemTax: ordersData.orderitems[index].tax,
+                              droptype: ordersData.orderitems[index].droptype,
+                              SecurityCode:
+                                  ordersData.orderitems[index].SecurityCode,
+                              //order: _con.order,
+                            );
+                          },
+                        ),
+                        SizedBox(height: 10),
+                        Container(
+                          height:
+                              _orderstatus == 'delivered' ? 150 : 150, //177:230
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+                          /*decoration: BoxDecoration(
                                 color: Theme.of(context).primaryColor,
                                 borderRadius:
                                 BorderRadius.only(topRight: Radius.circular(20), topLeft: Radius.circular(20)),
@@ -1538,33 +1721,34 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                                       offset: Offset(0, -2),
                                       blurRadius: 5.0)
                                 ]),*/
-                            child: SizedBox(
-                              width: MediaQuery.of(context).size.width - 70,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                mainAxisSize: MainAxisSize.max,
-                                children: <Widget>[
-                                  Row(
-                                    children: <Widget>[
-                                      Expanded(
-                                        child: Text(
-                                          S.of(context).subtotal,
+                          child: SizedBox(
+                            width: MediaQuery.of(context).size.width - 70,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.max,
+                              children: <Widget>[
+                                Row(
+                                  children: <Widget>[
+                                    Expanded(
+                                      child: Text(S.of(context).subtotal,
                                           style: TextStyle(
                                             fontWeight: FontWeight.w600,
                                             fontSize: 14,
                                             color: Colors.black,
                                           )),
-                                      ),
-                                      //Helper.getPrice(double.parse(_actualamount), style: Theme.of(context).textTheme.subhead)
-                                      Text(currency_format + _actualamount,  style:TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 14,
-                                        color: Colors.black,
-                                      )),
-                                    ],
-                                  ),
-                                  if(double.parse(_vatTotal) > 0)SizedBox(height: 5),
-                                  if(double.parse(_vatTotal) > 0)
+                                    ),
+                                    //Helper.getPrice(double.parse(_actualamount), style: Theme.of(context).textTheme.subhead)
+                                    Text(currency_format + _actualamount,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                          color: Colors.black,
+                                        )),
+                                  ],
+                                ),
+                                if (double.parse(_vatTotal) > 0)
+                                  SizedBox(height: 5),
+                                if (double.parse(_vatTotal) > 0)
                                   /*Row(
                               children: <Widget>[
                                 Expanded(
@@ -1577,46 +1761,55 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                                 Text("Rs. " + _vatTotal, style: Theme.of(context).textTheme.subhead),
                               ],
                             ),*/
-                                    SizedBox(height: 5),
-                                  Row(
-                                    children: <Widget>[
-                                      Expanded(
-                                        child: Text(
-                                          "Delivery charge",
-                                          style:  TextStyle(
+                                  SizedBox(height: 5),
+                                Row(
+                                  children: <Widget>[
+                                    Expanded(
+                                      child: Text("Delivery charge",
+                                          style: TextStyle(
                                             fontWeight: FontWeight.w600,
                                             fontSize: 14,
                                             color: Colors.black,
                                           )),
+                                    ),
+                                    //Helper.getPrice(double.parse(_deliverycharge), style: Theme.of(context).textTheme.subhead)
+                                    Text(currency_format + _deliverycharge,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                          color: Colors.black,
+                                        )),
+                                  ],
+                                ),
+                                SizedBox(
+                                  height: 10,
+                                ),
+                                DottedLine(
+                                  direction: Axis.horizontal,
+                                  dashColor: Colors.grey,
+                                ),
+                                SizedBox(
+                                  height: 10,
+                                ),
+                                //Divider(height: 10),
+                                Row(
+                                  children: <Widget>[
+                                    Expanded(
+                                      child: Text(
+                                        S.of(context).total,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .subtitle2,
                                       ),
-                                      //Helper.getPrice(double.parse(_deliverycharge), style: Theme.of(context).textTheme.subhead)
-                                      Text(currency_format + _deliverycharge, style:  TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 14,
-                                        color: Colors.black,
-                                      )),
-                                    ],
-                                  ),
-                                  SizedBox(height: 10,),
-                                  DottedLine(
-                                      direction: Axis.horizontal,
-                                    dashColor: Colors.grey,
-                                      ),
-                                  SizedBox(height: 10,),
-                                  //Divider(height: 10),
-                                  Row(
-                                    children: <Widget>[
-                                      Expanded(
-                                        child: Text(
-                                          S.of(context).total,
-                                          style: Theme.of(context).textTheme.subtitle2,
-                                        ),
-                                      ),
-                                      //Helper.getPrice(double.parse(_orderamount), style: Theme.of(context).textTheme.title)
-                                      Text(currency_format + _orderamount, style: Theme.of(context).textTheme.subtitle2),
-                                    ],
-                                  ),
-                                  SizedBox(height: 20),
+                                    ),
+                                    //Helper.getPrice(double.parse(_orderamount), style: Theme.of(context).textTheme.title)
+                                    Text(currency_format + _orderamount,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .subtitle2),
+                                  ],
+                                ),
+                                SizedBox(height: 20),
                                 /*  Row(
                                     children: [
                                       if(_orderstatus != 'delivered' && _orderstatus == 'onway')
@@ -1682,7 +1875,7 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                                             onPressed: () {
                                              // _dialogforCancel(context);
                                               showmodalbottoms(0);
-                                              *//*                showDialog(
+                                              */ /*                showDialog(
                                         context: context,
                                         builder: (context) {
                                           return AlertDialog(
@@ -1710,10 +1903,10 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                                               ),
                                             ],
                                           );
-                                        });*//*
+                                        });*/ /*
                                             },
                                             padding: EdgeInsets.symmetric(vertical: 10),
-                                            color:*//* Theme.of(context).accentColor*//*Colors.white,
+                                            color:*/ /* Theme.of(context).accentColor*/ /*Colors.white,
                                            // shape: StadiumBorder(),
                                             shape:RoundedRectangleBorder(
                                               borderRadius: BorderRadius.circular(5),
@@ -1729,11 +1922,7 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                                     ],
                                   ),*/
 
-
-
-
-
-                                 /* if(_orderstatus != 'delivered' && _orderstatus == 'dispatched')
+                                /* if(_orderstatus != 'delivered' && _orderstatus == 'dispatched')
                                     SizedBox(
                                       width: MediaQuery.of(context).size.width - 40,
                                       child: FlatButton(
@@ -1777,29 +1966,320 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                                       ),
                                     ),
                                   SizedBox(height: 10),*/
-                                ],
-                              ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                        // totalBottleCount == '0' ? SizedBox.shrink() :
+                        Padding(
+                            padding: EdgeInsets.only(
+                                bottom: 10, left: 20, right: 20),
+                            child: ElevatedButton(
+                                style: ButtonStyle().copyWith(
+                                    backgroundColor: MaterialStateProperty.all<
+                                            Color>(
+                                        config.Colors().blockSelectionColor)),
+                                onPressed: (_orderstatus == 'delivered')
+                                    ? null
+                                    : () {
+                                        if (_orderstatus != 'delivered') {
+                                          Provider.of<Bottles>(context,
+                                                  listen: false)
+                                              .getCollectedBottles();
+                                          showModalBottomSheet(
+                                              // useRootNavigator: true,
+                                              constraints: BoxConstraints(
+                                                  minHeight:
+                                                      MediaQuery.of(context)
+                                                              .size
+                                                              .height *
+                                                          0.3),
+                                              isScrollControlled: true,
+                                              context: context,
+                                              builder: (BuildContext context) {
+                                                return SingleChildScrollView(
+                                                    child: Padding(
+                                                  padding: EdgeInsets.only(
+                                                      bottom:
+                                                          MediaQuery.of(context)
+                                                              .viewInsets
+                                                              .bottom),
+                                                  // child: PickUpBottles(
+                                                  //   totalBottlesCount: (int.parse(
+                                                  //               totalBottlesCount) -
+                                                  //           increaseBottleCount)
+                                                  //       .toString(),
+                                                  //   customerNo: _customerNo,
+                                                  //   addedBottles:
+                                                  //       (int addBottles) async {
+                                                  //     // if (addBottles > 0) {
+                                                  //     //   print(
+                                                  //     //       '++++++++++++++++++++++++++++++++');
+                                                  //     //   print(addBottles
+                                                  //     //       .toString());
+                                                  //     //   SharedPreferences
+                                                  //     //       prefs =
+                                                  //     //       await SharedPreferences
+                                                  //     //           .getInstance();
+                                                  //     //   await PrefUtils.init();
+                                                  //     //
+                                                  //     //   String url = IConstants
+                                                  //     //           .API_PATH +
+                                                  //     //       'update-bottle';
+                                                  //     //   try {
+                                                  //     //     final response =
+                                                  //     //         await http.post(
+                                                  //     //             url,
+                                                  //     //             body: {
+                                                  //     //           'customer_id':
+                                                  //     //               _customerNo,
+                                                  //     //           'recived_bottle':
+                                                  //     //               addBottles
+                                                  //     //                   .toString(),
+                                                  //     //           'delivery_boy_id':
+                                                  //     //               prefs.get(
+                                                  //     //                   "id")
+                                                  //     //         });
+                                                  //     //     print('++++++++++++');
+                                                  //     //     print(_customerNo);
+                                                  //     //     print(addBottles
+                                                  //     //         .toString());
+                                                  //     //     print(
+                                                  //     //         prefs.get("id"));
+                                                  //     //     final responseJson =
+                                                  //     //         json.decode(
+                                                  //     //             response
+                                                  //     //                 .body);
+                                                  //     //     if (responseJson
+                                                  //     //             .toString() ==
+                                                  //     //         "[]") {
+                                                  //     //     } else {
+                                                  //     //       setState(() {
+                                                  //     //         increaseBottleCount =
+                                                  //     //             addBottles;
+                                                  //     //       });
+                                                  //     //       Provider.of<Bottles>(
+                                                  //     //               context,
+                                                  //     //               listen:
+                                                  //     //                   false)
+                                                  //     //           .getCollectedBottles();
+                                                  //     //     }
+                                                  //     //   } catch (e) {
+                                                  //     //     throw e;
+                                                  //     //   }
+                                                  //     // }
+                                                  //
+                                                  //     setState(() {
+                                                  //       increaseBottleCount =
+                                                  //           addBottles;
+                                                  //     });
+                                                  //   },
+                                                  // ),
+                                                  child: Container(
+                                                    padding: EdgeInsets.only(
+                                                        top: 16,
+                                                        left: 8,
+                                                        right: 8),
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Text(
+                                                          'Pickup Bottles',
+                                                          style: TextStyle(
+                                                              fontSize: 18,
+                                                              color: Theme.of(
+                                                                      context)
+                                                                  .accentColor,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold),
+                                                        ),
+                                                        Row(
+                                                          children: [
+                                                            Text(
+                                                                'Total No. of bottles with customer'),
+                                                            Spacer(),
+                                                            Container(
+                                                                width: 100,
+                                                                color: config
+                                                                        .Colors()
+                                                                    .blockSelectionColor,
+                                                                padding: EdgeInsets
+                                                                    .only(
+                                                                        top: 8,
+                                                                        bottom:
+                                                                            8,
+                                                                        left:
+                                                                            32,
+                                                                        right:
+                                                                            32),
+                                                                child: Text(increased
+                                                                    ? increaseBottleCount
+                                                                        .toString()
+                                                                    : totalBottlesCount))
+                                                            // totalBottlesCount))
+                                                          ],
+                                                        ),
+                                                        SizedBox(height: 10),
+                                                        Row(
+                                                          children: [
+                                                            Text(
+                                                                'Bottles Collected'),
+                                                            Spacer(),
+                                                            Container(
+                                                                width: 100,
+                                                                height: 36,
+                                                                child:
+                                                                    TextField(
+                                                                  controller:
+                                                                      textEditingController,
+                                                                  autofocus:
+                                                                      true,
+                                                                  textAlign:
+                                                                      TextAlign
+                                                                          .center,
+                                                                  inputFormatters: [
+                                                                    FilteringTextInputFormatter
+                                                                        .digitsOnly
+                                                                  ],
+                                                                  keyboardType:
+                                                                      TextInputType
+                                                                          .number,
+                                                                  decoration:
+                                                                      InputDecoration(
+                                                                    border:
+                                                                        OutlineInputBorder(
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
+                                                                              5),
+                                                                      borderSide: BorderSide(
+                                                                          color: Theme.of(context)
+                                                                              .accentColor,
+                                                                          width:
+                                                                              0.0),
+                                                                    ),
+                                                                    enabledBorder:
+                                                                        OutlineInputBorder(
+                                                                      borderSide: BorderSide(
+                                                                          color: Theme.of(context)
+                                                                              .accentColor,
+                                                                          width:
+                                                                              0.0),
+                                                                    ),
+                                                                    focusedBorder:
+                                                                        OutlineInputBorder(
+                                                                      borderSide: BorderSide(
+                                                                          color: Theme.of(context)
+                                                                              .accentColor,
+                                                                          width:
+                                                                              0.0),
+                                                                    ),
+                                                                  ),
+                                                                ))
+                                                          ],
+                                                        ),
+                                                        SizedBox(height: 20),
+                                                        Container(
+                                                            width:
+                                                                MediaQuery.of(
+                                                                        context)
+                                                                    .size
+                                                                    .width,
+                                                            child:
+                                                                ElevatedButton(
+                                                              style: ElevatedButton
+                                                                      .styleFrom()
+                                                                  .copyWith(
+                                                                      backgroundColor: MaterialStateProperty.all<
+                                                                          Color>(Theme.of(
+                                                                              context)
+                                                                          .accentColor)),
+                                                              child:
+                                                                  Text('Save'),
+                                                              onPressed: () {
+                                                                increaseBottleCount =
+                                                                    int.parse(
+                                                                        textEditingController
+                                                                            .text);
+                                                                textEditingController
+                                                                    .text = '';
+                                                                increased =
+                                                                    true;
+                                                                Navigator.of(
+                                                                        context)
+                                                                    .pop();
+                                                              },
+                                                            ))
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ));
+                                              });
+                                        }
+                                      },
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      'Bottle with Customer',
+                                      style: TextStyle(
+                                          color: Theme.of(context).accentColor,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    Spacer(),
+                                    Text(
+                                        increaseBottleCount == null ||
+                                                increaseBottleCount == ''
+                                            ? '0'
+                                            : increaseBottleCount.toString(),
+                                        // increaseBottleCount == null
+                                        //     ? totalBottlesCount
+                                        //     : increaseBottleCount.toString(),
+                                        style: TextStyle(
+                                            color:
+                                                Theme.of(context).accentColor)),
+                                    //(increaseBottleCount ?? 0) > 0
+                                    (increaseBottleCount == null ||
+                                                        increaseBottleCount ==
+                                                            ''
+                                                    ? 0
+                                                    : increaseBottleCount) >
+                                                0 &&
+                                            (_orderstatus != 'delivered')
+                                        ? Icon(
+                                            Icons.arrow_forward_ios,
+                                            color:
+                                                Theme.of(context).accentColor,
+                                            size: 16,
+                                          )
+                                        : SizedBox.shrink()
+                                  ],
+                                )))
+                      ],
                     ),
                   ),
-                ],
-              ),
-      bottomNavigationBar:_orderstatus == 'delivered'?SizedBox.shrink():_isloading?SizedBox.shrink():_buildBottomNavigationBar(),
+                ),
+              ],
+            ),
+      bottomNavigationBar: _orderstatus == 'delivered'
+          ? SizedBox.shrink()
+          : _isloading
+              ? SizedBox.shrink()
+              : _buildBottomNavigationBar(),
     );
   }
+
   _buildBottomNavigationBar() {
     return Container(
       height: 70,
       width: MediaQuery.of(context).size.width,
-      child:  Row(
+      child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if(_orderstatus != 'delivered' && _orderstatus == 'onway')
+          if (_orderstatus != 'delivered' && _orderstatus == 'onway')
             SizedBox(
-              width: MediaQuery.of(context).size.width*0.43,
+              width: MediaQuery.of(context).size.width * 0.43,
               child: FlatButton(
                 onPressed: () {
                   showDialog(
@@ -1807,25 +2287,28 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                       builder: (context) {
                         return AlertDialog(
                           title: Text(S.of(context).delivery_confirmation),
-                          content: (_paymenttype=="cod")?Text("Do you confirm if you have delivered all the products and collected a cash of $currency_format $_orderamount"):Text(S
-                              .of(context)
-                              .would_you_please_confirm_if_you_have_delivered_all_meals),
+                          content: (_paymenttype == "cod")
+                              ? Text(
+                                  "Do you confirm if you have delivered all the products and collected a cash of $currency_format $_orderamount")
+                              : Text(S
+                                  .of(context)
+                                  .would_you_please_confirm_if_you_have_delivered_all_meals),
                           actions: <Widget>[
                             // usually buttons at the bottom of the dialog
                             FlatButton(
                               child: new Text(S.of(context).confirm),
                               onPressed: () {
-//                                                        _con.doDeliveredOrder(_con.order);
-                                debugPrint("otp...."+IConstants.isOtp.toString());
+//                              _con.doDeliveredOrder(_con.order);
+                                debugPrint(
+                                    "otp...." + IConstants.isOtp.toString());
                                 Navigator.of(context).pop();
-                                if(IConstants.isOtp){
+                                if (IConstants.isOtp) {
                                   _dialogforOTP();
-                                }else{
+                                } else {
                                   _dialogforDelivered(context);
                                   performDelivered();
                                 }
                                 // Navigator.of(context).pop();
-
                               },
                             ),
                             FlatButton(
@@ -1847,15 +2330,19 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                 child: Text(
                   S.of(context).delivered,
                   textAlign: TextAlign.start,
-                  style: TextStyle(color: Theme.of(context).primaryColor,fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      color: Theme.of(context).primaryColor,
+                      fontWeight: FontWeight.bold),
                 ),
               ),
             ),
-            if(_orderstatus != 'delivered' && _orderstatus == 'onway')
-          SizedBox(width: 10,),
-          if(_orderstatus != 'delivered' && _orderstatus == 'onway')
+          if (_orderstatus != 'delivered' && _orderstatus == 'onway')
             SizedBox(
-              width: MediaQuery.of(context).size.width*0.43,
+              width: 10,
+            ),
+          if (_orderstatus != 'delivered' && _orderstatus == 'onway')
+            SizedBox(
+              width: MediaQuery.of(context).size.width * 0.43,
               child: FlatButton(
                 onPressed: () {
                   // _dialogforCancel(context);
@@ -1891,20 +2378,24 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                                         });*/
                 },
                 padding: EdgeInsets.symmetric(vertical: 10),
-                color:/* Theme.of(context).accentColor*/Colors.white,
+                color: /* Theme.of(context).accentColor*/ Colors.white,
                 // shape: StadiumBorder(),
-                shape:RoundedRectangleBorder(
+                shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(5),
-                    side: BorderSide(width:1.0,color:Theme.of(context).accentColor, )
-                ),
+                    side: BorderSide(
+                      width: 1.0,
+                      color: Theme.of(context).accentColor,
+                    )),
                 child: Text(
                   S.of(context).issue,
                   textAlign: TextAlign.start,
-                  style: TextStyle(color: Theme.of(context).accentColor,fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      color: Theme.of(context).accentColor,
+                      fontWeight: FontWeight.bold),
                 ),
               ),
             ),
-          if(_orderstatus != 'delivered' && _orderstatus == 'dispatched')
+          if (_orderstatus != 'delivered' && _orderstatus == 'dispatched')
             SizedBox(
               width: MediaQuery.of(context).size.width - 40,
               child: FlatButton(
@@ -1914,7 +2405,9 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                       builder: (context) {
                         return AlertDialog(
                           title: Text(S.of(context).delivery_confirmation),
-                          content: Text(S.of(context).would_you_please_confirm_if_you_are_accepting_this_order),
+                          content: Text(S
+                              .of(context)
+                              .would_you_please_confirm_if_you_are_accepting_this_order),
                           actions: <Widget>[
                             // usually buttons at the bottom of the dialog
                             FlatButton(
@@ -1937,16 +2430,148 @@ class _OrderWidgetState extends StateMVC<OrderWidget> {
                 },
                 padding: EdgeInsets.symmetric(vertical: 14),
                 color: Theme.of(context).accentColor,
-                shape:  RoundedRectangleBorder(
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(5),
                 ),
                 child: Text(
                   "Accept Order",
                   textAlign: TextAlign.start,
-                  style: TextStyle(color: Theme.of(context).primaryColor,fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      color: Theme.of(context).primaryColor,
+                      fontWeight: FontWeight.bold),
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class PickUpBottles extends StatefulWidget {
+  PickUpBottles(
+      {Key key, this.customerNo, this.totalBottlesCount, this.addedBottles})
+      : super(key: key);
+  final String customerNo;
+  final String totalBottlesCount;
+  final Function(int) addedBottles;
+
+  @override
+  State<PickUpBottles> createState() => _PickUpBottlesState();
+}
+
+class _PickUpBottlesState extends State<PickUpBottles> {
+  TextEditingController textEditingController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    print('++++++++++++');
+    print(widget.totalBottlesCount);
+    print(widget.customerNo);
+    return Container(
+      padding: EdgeInsets.only(top: 16, left: 8, right: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Pickup Bottles',
+            style: TextStyle(
+                fontSize: 18,
+                color: Theme.of(context).accentColor,
+                fontWeight: FontWeight.bold),
+          ),
+          Row(
+            children: [
+              Text('Total No. of bottles with customer'),
+              Spacer(),
+              Container(
+                  width: 100,
+                  color: config.Colors().blockSelectionColor,
+                  padding:
+                      EdgeInsets.only(top: 8, bottom: 8, left: 32, right: 32),
+                  child: Text(widget.totalBottlesCount))
+            ],
+          ),
+          SizedBox(height: 10),
+          Row(
+            children: [
+              Text('Bottles Collected'),
+              Spacer(),
+              Container(
+                  width: 100,
+                  height: 36,
+                  child: TextField(
+                    controller: textEditingController,
+                    autofocus: true,
+                    textAlign: TextAlign.center,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(5),
+                        borderSide: BorderSide(
+                            color: Theme.of(context).accentColor, width: 0.0),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(
+                            color: Theme.of(context).accentColor, width: 0.0),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(
+                            color: Theme.of(context).accentColor, width: 0.0),
+                      ),
+                    ),
+                  ))
+            ],
+          ),
+          SizedBox(height: 20),
+          Container(
+              width: MediaQuery.of(context).size.width,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom().copyWith(
+                    backgroundColor: MaterialStateProperty.all<Color>(
+                        Theme.of(context).accentColor)),
+                child: Text('Save'),
+                onPressed: () async {
+                  // final String bottles = textEditingController.text;
+                  // if (bottles.isNotEmpty && (int.parse(bottles) > 0)) {
+                  //   print('++++++++++++++++++++++++++++++++');
+                  //   print(textEditingController.text);
+                  //   SharedPreferences prefs =
+                  //       await SharedPreferences.getInstance();
+                  //   await PrefUtils.init();
+                  //
+                  //   String url = IConstants.API_PATH + 'update-bottle';
+                  //   try {
+                  //     final response = await http.post(url, body: {
+                  //       'customer_id': widget.customerNo,
+                  //       'recived_bottle': textEditingController.text,
+                  //       'delivery_boy_id': prefs.get("id")
+                  //     });
+                  //     print('++++++++++++');
+                  //     print(widget.customerNo);
+                  //     print(textEditingController.text);
+                  //     print(prefs.get("id"));
+                  //     final responseJson = json.decode(response.body);
+                  //     if (responseJson.toString() == "[]") {} else {
+                  //       widget.addedBottles(int.parse(textEditingController.text));
+                  //       Provider.of<Bottles>(context,listen: false).getCollectedBottles();
+                  //     }
+                  //   } catch (e) {
+                  //     throw e;
+                  //   }
+                  //
+                  //
+                  // }
+                  widget.addedBottles(int.parse(textEditingController.text));
+                  Navigator.of(context).pop();
+                },
+              ))
         ],
       ),
     );
